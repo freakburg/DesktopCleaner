@@ -1,0 +1,451 @@
+﻿<Window x:Class="DesktopCleaner.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Desktop Cleaner" Height="700" Width="960">
+  <TabControl x:Name="Tabs" TabStripPlacement="Left" SelectionChanged="Tabs_Changed">
+  <TabControl.Resources>
+    <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+      <Setter Property="Padding" Value="16,10"/>
+      <Setter Property="MinWidth" Value="170"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="FontSize" Value="14"/>
+    </Style>
+  </TabControl.Resources>
+  <TabItem Header="Home">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="See what is using your storage" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Pick where to look, then press Check. Nothing is deleted without your OK, and removed files go to the Recycle Bin so you can get them back."/>
+        <DockPanel>
+          <Button x:Name="OvScanBtn" Content="Check" FontSize="15" FontWeight="SemiBold" Padding="26,6" DockPanel.Dock="Left" Click="OvScan_Click"/>
+          <Button x:Name="OvCancelBtn" Content="Stop" Padding="14,6" Margin="8,0,0,0" DockPanel.Dock="Left" IsEnabled="False" Click="OvCancel_Click"/>
+          <Button x:Name="OvSaveBtn" Content="Save report..." Padding="14,6" Margin="8,0,0,0" DockPanel.Dock="Right" IsEnabled="False" Click="OvSave_Click" ToolTip="Save these results as a spreadsheet (CSV) or a printable page"/>
+          <TextBlock Text="Where to look:" VerticalAlignment="Center" Margin="18,0,8,0" DockPanel.Dock="Left"/>
+          <ComboBox x:Name="OvScope" Width="230" DockPanel.Dock="Left" VerticalContentAlignment="Center" SelectionChanged="OvScope_Changed"/>
+          <TextBlock x:Name="OvFolder" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+        </DockPanel>
+      </StackPanel>
+      <StackPanel DockPanel.Dock="Top">
+        <ProgressBar x:Name="OvBar" Height="6" IsIndeterminate="False"/>
+        <TextBlock x:Name="OvStatus" Margin="0,6,0,10" Foreground="{DynamicResource MutedBrush}" Text="Ready when you are."/>
+      </StackPanel>
+      <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+          <Border x:Name="GrowthBox" Visibility="Collapsed" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,14" Background="{DynamicResource CardBrush}">
+            <StackPanel>
+              <TextBlock x:Name="GrowthTitle" FontWeight="SemiBold" FontSize="14"/>
+              <TextBlock x:Name="GrowthDetail" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+              <Canvas x:Name="Spark" Width="360" Height="46" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+              <TextBlock x:Name="SparkNote" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
+            </StackPanel>
+          </Border>          <TextBlock x:Name="FixHeader" Text="What you can clear up" FontSize="18" FontWeight="SemiBold" Visibility="Collapsed"/>
+          <ItemsControl x:Name="FixList" Margin="0,6,0,16">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,8" Background="{DynamicResource CardBrush}">
+                  <DockPanel>
+                    <Button Content="{Binding ButtonText}" Visibility="{Binding ButtonVisibility}" DockPanel.Dock="Right" Padding="14,6" VerticalAlignment="Center" Click="Fix_Click"/>
+                    <TextBlock Text="{Binding SizeText}" DockPanel.Dock="Right" FontSize="18" FontWeight="SemiBold" Margin="12,0" VerticalAlignment="Center" Foreground="#C0392B"/>
+                    <StackPanel>
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14"/>
+                      <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock x:Name="CatHeader" Text="What is using the space" FontSize="18" FontWeight="SemiBold" Visibility="Collapsed"/>
+          <ItemsControl x:Name="CatList" Margin="0,6,0,16">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,3">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="170"/><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
+                  <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                  <ProgressBar Grid.Column="1" Height="18" Maximum="100" Value="{Binding Percent, Mode=OneWay}" Foreground="{Binding Brush}" Background="{DynamicResource TrackBrush}" BorderThickness="0"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Label}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <DockPanel x:Name="FolderHeader" Visibility="Collapsed">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+              <RadioButton x:Name="OvViewBars" Content="Bars" IsChecked="True" Margin="0,0,12,0" Checked="OvView_Changed"/>
+              <RadioButton x:Name="OvViewMap" Content="Map" Checked="OvView_Changed"/>
+            </StackPanel>
+            <TextBlock Text="Where the space is" FontSize="18" FontWeight="SemiBold"/>
+          </DockPanel>
+          <TextBlock x:Name="WhereHint" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,6" Visibility="Collapsed" TextWrapping="Wrap"
+                     Text="Click Look inside (or a block on the map) to explore a folder. Click a name above it to go back up."/>
+          <WrapPanel x:Name="Crumbs" Margin="0,0,0,6"/>
+          <ItemsControl x:Name="FolderList" Margin="0,0,0,12">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,3">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="*"/><ColumnDefinition Width="110"/><ColumnDefinition Width="100"/><ColumnDefinition Width="64"/></Grid.ColumnDefinitions>
+                  <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}"/>
+                  <ProgressBar Grid.Column="1" Height="18" Maximum="100" Value="{Binding Percent, Mode=OneWay}" Foreground="{Binding Brush}" Background="{DynamicResource TrackBrush}" BorderThickness="0"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Label}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                  <Button Grid.Column="3" Content="Look inside" Padding="6,1" Margin="4,0" Visibility="{Binding DrillVisibility}" Click="Drill_Click"/>
+                  <Button Grid.Column="4" Content="Show" Padding="6,1" Visibility="{Binding ShowVisibility}" Click="OpenFolder_Click" ToolTip="Show in File Explorer"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Border x:Name="MapBorder" Height="340" Visibility="Collapsed" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Margin="0,0,0,12" SizeChanged="MapBorder_SizeChanged" ClipToBounds="True">
+            <Canvas x:Name="MapCanvas" ClipToBounds="True"/>
+          </Border>
+          <TextBlock x:Name="FilesHeader" Text="Biggest files" FontSize="18" FontWeight="SemiBold" Visibility="Collapsed"/>
+          <TextBlock x:Name="FilesHint" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,6" Visibility="Collapsed" Text="The largest individual files in this location. Show opens File Explorer with the file selected."/>
+          <ItemsControl x:Name="FileList" Margin="0,0,0,12">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,3">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="300"/><ColumnDefinition Width="*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="64"/></Grid.ColumnDefinitions>
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}"/>
+                    <TextBlock Text="{Binding Folder}" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip="{Binding Folder}"/>
+                  </StackPanel>
+                  <ProgressBar Grid.Column="1" Height="18" Maximum="100" Value="{Binding Percent, Mode=OneWay}" Foreground="{Binding Brush}" Background="{DynamicResource TrackBrush}" BorderThickness="0" Margin="8,0,0,0"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Label}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                  <Button Grid.Column="3" Content="Show" Padding="6,1" Click="ShowFile_Click"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+    </DockPanel>
+  </TabItem>
+  <TabItem x:Name="DupTab" Header="Duplicate files">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="Find duplicate files" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Finds files that are exact copies of each other, even if the names differ. In each group we tick every copy except the first. Untick any you want to keep. At least one copy of every file always stays."/>
+        <DockPanel>
+          <Button x:Name="ScanBtn" Content="Find duplicates" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="Scan_Click"/>
+          <Button x:Name="CancelBtn" Content="Stop" Padding="14,6" Margin="8,0,0,0" DockPanel.Dock="Left" IsEnabled="False" Click="Cancel_Click"/>
+          <Button x:Name="BrowseBtn" Content="Choose folder..." Padding="12,6" Margin="8,0,0,0" DockPanel.Dock="Left" Click="Browse_Click"/>
+          <TextBlock x:Name="FolderBox" Margin="14,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis" Text="No folder chosen yet"/>
+        </DockPanel>
+      </StackPanel>
+      <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+        <DockPanel Margin="0,6,0,0">
+          <Button x:Name="DeleteBtn" Content="Remove ticked copies" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="Delete_Click"/>
+          <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Choose a folder, then press Find duplicates."/>
+        </DockPanel>
+      </StackPanel>
+      <ProgressBar x:Name="Bar" DockPanel.Dock="Top" Height="6" Minimum="0" Maximum="1" Margin="0,0,0,8"/>
+      <TreeView x:Name="Tree" BorderBrush="{DynamicResource CardBorderBrush}">
+        <TreeView.ItemContainerStyle>
+          <Style TargetType="TreeViewItem"><Setter Property="IsExpanded" Value="True"/><Setter Property="Margin" Value="0,2"/></Style>
+        </TreeView.ItemContainerStyle>
+        <TreeView.ItemTemplate>
+          <HierarchicalDataTemplate ItemsSource="{Binding Files}">
+            <StackPanel Margin="0,4">
+              <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14"/>
+              <TextBlock Text="{Binding Summary}" Foreground="#C0392B"/>
+            </StackPanel>
+            <HierarchicalDataTemplate.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Orientation="Horizontal" Margin="0,2">
+                  <CheckBox IsChecked="{Binding Remove}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding Folder}" ToolTip="{Binding Path}"/>
+                  <TextBlock Text="{Binding Modified}" Foreground="{DynamicResource MutedBrush}" Margin="12,0,0,0"/>
+                </StackPanel>
+              </DataTemplate>
+            </HierarchicalDataTemplate.ItemTemplate>
+          </HierarchicalDataTemplate>
+        </TreeView.ItemTemplate>
+      </TreeView>
+    </DockPanel>
+  </TabItem>
+  <TabItem x:Name="PhotoTab" Header="Similar photos">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="Find similar photos" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Finds photos that look alike: resized, re-saved or slightly edited copies that exact-match tools miss. We mark the sharpest one in each group as the one to keep. Nothing is ticked for you."/>
+        <DockPanel>
+          <Button x:Name="PhScanBtn" Content="Find similar photos" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="PhScan_Click"/>
+          <Button x:Name="PhStopBtn" Content="Stop" Padding="14,6" Margin="8,0,0,0" DockPanel.Dock="Left" IsEnabled="False" Click="PhStop_Click"/>
+          <Button Content="Choose folder..." Padding="12,6" Margin="8,0,0,0" DockPanel.Dock="Left" Click="PhBrowse_Click"/>
+          <TextBlock Text="How alike:" VerticalAlignment="Center" Margin="18,0,6,0" DockPanel.Dock="Left"/>
+          <ComboBox x:Name="PhStrict" Width="190" DockPanel.Dock="Left" SelectedIndex="1">
+            <ComboBoxItem Content="Nearly identical"/><ComboBoxItem Content="Similar (recommended)"/><ComboBoxItem Content="Loosely similar"/>
+          </ComboBox>
+          <TextBox x:Name="PhFolder" Margin="14,0,0,0" VerticalContentAlignment="Center" ToolTip="The folder of photos to look through. You can also paste a path."/>
+        </DockPanel>
+      </StackPanel>
+      <ProgressBar x:Name="PhBar" DockPanel.Dock="Top" Height="6" Minimum="0" Maximum="1" Margin="0,0,0,8"/>
+      <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+        <Button x:Name="PhDeleteBtn" Content="Remove ticked photos" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="PhDelete_Click"/>
+        <Button x:Name="PhTickBtn" Content="Tick all except the ones to keep" Padding="12,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="PhTick_Click"/>
+        <TextBlock x:Name="PhStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Photos are only compared on this PC. Nothing is uploaded."/>
+      </DockPanel>
+      <ListBox x:Name="PhList" BorderBrush="{DynamicResource CardBorderBrush}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListBox.ItemContainerStyle>
+          <Style TargetType="ListBoxItem">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate></Setter.Value></Setter>
+          </Style>
+        </ListBox.ItemContainerStyle>
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <StackPanel Margin="4,8,4,4">
+              <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14"/>
+              <TextBlock Text="{Binding Summary}" Foreground="#C0392B"/>
+              <ItemsControl ItemsSource="{Binding Photos}" Margin="0,6,0,0">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Width="176" Margin="0,0,10,10" Padding="6" BorderThickness="2" BorderBrush="{Binding Border}" CornerRadius="4" Background="{DynamicResource CardBrush}">
+                      <StackPanel>
+                        <Image Source="{Binding Thumbnail}" Height="120" Stretch="Uniform"/>
+                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}" Margin="0,4,0,0"/>
+                        <TextBlock Text="{Binding Details}" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
+                        <TextBlock Text="Best quality: we suggest keeping this" Foreground="#1E8449" FontSize="11" TextWrapping="Wrap" Visibility="{Binding KeepVisibility}"/>
+                        <CheckBox Content="Remove" IsChecked="{Binding Remove}" Margin="0,4,0,0"/>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+  </TabItem>
+  <TabItem x:Name="DlTab" Header="Downloads">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="Review your Downloads" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Lists old setup files, ZIP archives and very large files in your Downloads folder. Nothing is ticked for you. Tick what you no longer need; it goes to the Recycle Bin."/>
+        <DockPanel>
+          <Button x:Name="DlScanBtn" Content="Look in Downloads" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="DlScan_Click"/>
+          <TextBlock Text="Count a file as old after" VerticalAlignment="Center" Margin="18,0,6,0" DockPanel.Dock="Left"/>
+          <TextBox x:Name="DlDays" Text="30" Width="44" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" DockPanel.Dock="Left"/>
+          <TextBlock Text="days, and large from" VerticalAlignment="Center" Margin="6,0,6,0" DockPanel.Dock="Left"/>
+          <TextBox x:Name="DlLarge" Text="500" Width="56" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" DockPanel.Dock="Left"/>
+          <TextBlock Text="MB" VerticalAlignment="Center" Margin="6,0,0,0" DockPanel.Dock="Left"/>
+          <TextBlock x:Name="DlFolder" Margin="14,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+        </DockPanel>
+      </StackPanel>
+      <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+        <Button x:Name="DlDeleteBtn" Content="Remove ticked files" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="DlDelete_Click"/>
+        <TextBlock x:Name="DlStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Press Look in Downloads to begin."/>
+      </DockPanel>
+      <ListView x:Name="DlList" BorderBrush="{DynamicResource CardBorderBrush}">
+        <ListView.View>
+          <GridView>
+            <GridViewColumn Width="40"><GridViewColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Remove}"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
+            <GridViewColumn Header="File" Width="320" DisplayMemberBinding="{Binding Name}"/>
+            <GridViewColumn Header="Size" Width="80" DisplayMemberBinding="{Binding SizeText}"/>
+            <GridViewColumn Header="Why we flagged it" Width="190" DisplayMemberBinding="{Binding Why}"/>
+            <GridViewColumn Header="Downloaded" Width="110" DisplayMemberBinding="{Binding AgeText}"/>
+            <GridViewColumn Header="In folder" Width="260" DisplayMemberBinding="{Binding Folder}"/>
+          </GridView>
+        </ListView.View>
+      </ListView>
+    </DockPanel>
+  </TabItem>  <TabItem x:Name="CacheTab" Header="App caches">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="Clear app caches" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Browsers and apps keep saved copies of pictures and pages to load faster. They rebuild by themselves, so clearing them is safe. Your passwords, bookmarks and history are never touched. Cleared caches are deleted for good (not sent to the Recycle Bin, which would not free any space). Closing the app first works best."/>
+        <DockPanel>
+          <Button x:Name="CaScanBtn" Content="Look for caches" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="CaScan_Click"/>
+          <TextBlock x:Name="CaTotal" Margin="16,0,0,0" VerticalAlignment="Center" FontSize="16" FontWeight="SemiBold" Foreground="#C0392B"/>
+        </DockPanel>
+      </StackPanel>
+      <ProgressBar x:Name="CaBar" DockPanel.Dock="Top" Height="6" Margin="0,0,0,8"/>
+      <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+        <Button x:Name="CaClearBtn" Content="Clear ticked caches" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="CaClear_Click"/>
+        <Button x:Name="CaAllBtn" Content="Tick all" Padding="12,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="CaAll_Click"/>
+        <TextBlock x:Name="CaStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Press Look for caches to see what is using space."/>
+      </DockPanel>
+      <ListView x:Name="CaList" BorderBrush="{DynamicResource CardBorderBrush}">
+        <ListView.View>
+          <GridView>
+            <GridViewColumn Width="40"><GridViewColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Remove}"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
+            <GridViewColumn Header="App" Width="170" DisplayMemberBinding="{Binding Name}"/>
+            <GridViewColumn Header="Size" Width="90" DisplayMemberBinding="{Binding SizeText}"/>
+            <GridViewColumn Header="What it is" Width="640" DisplayMemberBinding="{Binding Description}"/>
+          </GridView>
+        </ListView.View>
+      </ListView>
+    </DockPanel>
+  </TabItem>
+  <TabItem x:Name="OneDriveTab" Header="OneDrive">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="Free up space from OneDrive" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Big files that are saved in OneDrive can also be kept on this PC, using space twice. You can set them to online-only: they stay safe in OneDrive and download again when you open them. Nothing is deleted, and files you pinned with Always keep on this device are left alone."/>
+        <DockPanel>
+          <Button x:Name="OdScanBtn" Content="Find files to free up" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="OdScan_Click"/>
+          <TextBlock x:Name="OdTotal" Margin="16,0,0,0" VerticalAlignment="Center" FontSize="16" FontWeight="SemiBold" Foreground="#C0392B"/>
+        </DockPanel>
+      </StackPanel>
+      <ProgressBar x:Name="OdBar" DockPanel.Dock="Top" Height="6" Margin="0,0,0,8"/>
+      <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+        <Button x:Name="OdFreeBtn" Content="Free up ticked files" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="OdFree_Click"/>
+        <TextBlock x:Name="OdStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Press Find files to free up."/>
+      </DockPanel>
+      <ListView x:Name="OdList" BorderBrush="{DynamicResource CardBorderBrush}">
+        <ListView.View>
+          <GridView>
+            <GridViewColumn Width="40"><GridViewColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Remove}"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
+            <GridViewColumn Header="File" Width="300" DisplayMemberBinding="{Binding Name}"/>
+            <GridViewColumn Header="Size" Width="90" DisplayMemberBinding="{Binding SizeText}"/>
+            <GridViewColumn Header="In folder" Width="560" DisplayMemberBinding="{Binding Folder}"/>
+          </GridView>
+        </ListView.View>
+      </ListView>
+    </DockPanel>
+  </TabItem>
+  <TabItem x:Name="EmptyTab" Header="Empty folders">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="Find empty folders" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Empty folders are harmless clutter. Pick a place, review the list, and tick the ones to remove. They go to the Recycle Bin."/>
+        <DockPanel>
+          <Button x:Name="EmScanBtn" Content="Find empty folders" Padding="18,6" DockPanel.Dock="Left" Click="EmScan_Click"/>
+          <Button Content="Choose folder..." Padding="12,6" Margin="8,0,0,0" DockPanel.Dock="Left" Click="EmBrowse_Click"/>
+          <TextBlock x:Name="EmFolder" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+        </DockPanel>
+      </StackPanel>
+      <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+        <Button x:Name="EmDeleteBtn" Content="Remove ticked folders" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="EmDelete_Click"/>
+        <Button x:Name="EmAllBtn" Content="Tick all" Padding="10,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="EmAll_Click"/>
+        <TextBlock x:Name="EmStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Ready when you are."/>
+      </DockPanel>
+      <ListView x:Name="EmList">
+        <ListView.View>
+          <GridView>
+            <GridViewColumn Width="40"><GridViewColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Remove}"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
+            <GridViewColumn Header="Folder" Width="620" DisplayMemberBinding="{Binding Path}"/>
+            <GridViewColumn Header="Folders inside" Width="110" DisplayMemberBinding="{Binding Inside}"/>
+            <GridViewColumn Header="Last changed" Width="130" DisplayMemberBinding="{Binding Changed}"/>
+          </GridView>
+        </ListView.View>
+      </ListView>
+    </DockPanel>
+  </TabItem>
+  <TabItem x:Name="AppsTab" Header="Installed apps">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="Programs taking up space" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Your installed programs, biggest first. Windows does not record when a program was last used, so look for big ones you installed long ago and no longer need. To remove one, select it and open Windows' own Installed apps page. We never uninstall anything ourselves."/>
+        <StackPanel Orientation="Horizontal">
+          <Button x:Name="AppsScanBtn" Content="List my programs" FontWeight="SemiBold" Padding="20,6" Click="AppsScan_Click"/>
+          <Button x:Name="AppsOpenBtn" Content="Open Windows Installed apps" Padding="14,6" Margin="8,0,0,0" Click="AppsOpen_Click"/>
+        </StackPanel>
+      </StackPanel>
+      <TextBlock x:Name="AppsStatus" DockPanel.Dock="Bottom" Margin="0,8,0,0" Foreground="{DynamicResource MutedBrush}" Text="Press List my programs."/>
+      <ListView x:Name="AppsList" BorderBrush="{DynamicResource CardBorderBrush}">
+        <ListView.View>
+          <GridView>
+            <GridViewColumn Header="Program" Width="360" DisplayMemberBinding="{Binding Name}"/>
+            <GridViewColumn Header="Size" Width="90" DisplayMemberBinding="{Binding SizeText}"/>
+            <GridViewColumn Header="Installed" Width="170" DisplayMemberBinding="{Binding InstalledText}"/>
+            <GridViewColumn Header="Publisher" Width="290" DisplayMemberBinding="{Binding Publisher}"/>
+          </GridView>
+        </ListView.View>
+      </ListView>
+    </DockPanel>
+  </TabItem>
+  <TabItem x:Name="SchedTab" Header="Weekly report">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="Get a weekly report" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Once a week your PC checks for leftover temporary files and writes a short report of the space you could free. It only looks. It never deletes anything on its own."/>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="Every" VerticalAlignment="Center" Margin="0,0,8,0"/>
+          <ComboBox x:Name="SchedDay" Width="120"/>
+          <TextBlock Text="at" VerticalAlignment="Center" Margin="10,0,8,0"/>
+          <ComboBox x:Name="SchedTime" Width="100"/>
+          <Button x:Name="SchedOnBtn" Content="Turn on" Padding="16,5" Margin="16,0,0,0" Click="SchedOn_Click"/>
+          <Button x:Name="SchedOffBtn" Content="Turn off" Padding="16,5" Margin="8,0,0,0" Click="SchedOff_Click"/>
+          <Button Content="Make a report now" Padding="16,5" Margin="24,0,0,0" Click="SchedNow_Click"/>
+        </StackPanel>
+        <TextBlock x:Name="SchedStatus" Margin="0,10,0,0" FontWeight="SemiBold"/>
+      </StackPanel>
+      <TextBlock DockPanel.Dock="Top" Text="Past reports" FontSize="18" FontWeight="SemiBold" Margin="0,6,0,6"/>
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="280"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <DockPanel>
+          <Button DockPanel.Dock="Bottom" Content="Open reports folder" Padding="10,4" Margin="0,6,0,0" Click="SchedFolder_Click"/>
+          <ListBox x:Name="SchedList" DisplayMemberPath="Title" SelectionChanged="SchedList_Changed"/>
+        </DockPanel>
+        <TextBox x:Name="SchedView" Grid.Column="2" IsReadOnly="True" FontFamily="Consolas" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Background="{DynamicResource CardBrush}"/>
+      </Grid>
+    </DockPanel>
+  </TabItem>
+  <TabItem x:Name="HistTab" Header="History">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="What was removed" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Everything this app has removed. Files sent to the Recycle Bin can be put back with one click, as long as the Recycle Bin has not been emptied. Cleared caches are gone for good, but apps rebuild them."/>
+        <StackPanel Orientation="Horizontal">
+          <Button x:Name="HiRestoreBtn" Content="Put back selected file" FontWeight="SemiBold" Padding="18,6" Click="HiRestore_Click"/>
+          <Button Content="Refresh" Padding="14,6" Margin="8,0,0,0" Click="HiRefresh_Click"/>
+          <CheckBox x:Name="HiShowAll" Content="Also show things that were skipped" Margin="18,0,0,0" VerticalAlignment="Center" Checked="HiRefresh_Click" Unchecked="HiRefresh_Click"/>
+        </StackPanel>
+      </StackPanel>
+      <TextBlock x:Name="HiStatus" DockPanel.Dock="Bottom" Margin="0,8,0,0" Foreground="{DynamicResource MutedBrush}" Text=""/>
+      <ListView x:Name="HiList" BorderBrush="{DynamicResource CardBorderBrush}" SelectionMode="Single">
+        <ListView.View>
+          <GridView>
+            <GridViewColumn Header="When" Width="150" DisplayMemberBinding="{Binding When}"/>
+            <GridViewColumn Header="What happened" Width="190" DisplayMemberBinding="{Binding What}"/>
+            <GridViewColumn Header="Size" Width="80" DisplayMemberBinding="{Binding SizeText}"/>
+            <GridViewColumn Header="File" Width="640" DisplayMemberBinding="{Binding Path}"/>
+          </GridView>
+        </ListView.View>
+      </ListView>
+    </DockPanel>
+  </TabItem>  <TabItem x:Name="SettingsTab" Header="Settings">
+    <StackPanel Margin="14">
+      <TextBlock Text="Settings" FontSize="22" FontWeight="SemiBold"/>
+      <TextBlock Margin="0,14,0,4" FontWeight="SemiBold" Text="Right-click menu"/>
+      <CheckBox x:Name="SetExplorer" Content="Add 'Check with Desktop Cleaner' when I right-click a folder in File Explorer" Checked="SetExplorer_Changed" Unchecked="SetExplorer_Changed"/>
+      <TextBlock Margin="0,14,0,4" FontWeight="SemiBold" Text="Low disk space"/>
+      <CheckBox x:Name="SetLowDisk" Content="Warn me when my drive is getting full (checked during the weekly report)" Checked="SetLowDisk_Changed" Unchecked="SetLowDisk_Changed"/>
+      <StackPanel Orientation="Horizontal" Margin="22,6,0,0">
+        <TextBlock Text="Warn when less than" VerticalAlignment="Center"/>
+        <TextBox x:Name="SetLowPct" Width="44" Margin="8,0" HorizontalContentAlignment="Center" LostFocus="SetLowDisk_Changed"/>
+        <TextBlock Text="% or" VerticalAlignment="Center"/>
+        <TextBox x:Name="SetLowGb" Width="44" Margin="8,0" HorizontalContentAlignment="Center" LostFocus="SetLowDisk_Changed"/>
+        <TextBlock Text="GB is free" VerticalAlignment="Center"/>
+      </StackPanel>
+      <TextBlock Margin="0,14,0,4" FontWeight="SemiBold" Text="Appearance"/>
+      <TextBlock Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Text="Desktop Cleaner follows your Windows light or dark setting automatically."/>
+      <TextBlock x:Name="SetStatus" Margin="0,16,0,0" Foreground="{DynamicResource MutedBrush}"/>
+    </StackPanel>
+  </TabItem>  </TabControl>
+</Window>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

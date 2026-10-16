@@ -1,0 +1,12 @@
+﻿<Project>
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Authors>freakburg</Authors>
+    <Product>Desktop Cleaner</Product>
+    <Copyright>Copyright (c) 2026 freakburg</Copyright>
+    <RepositoryUrl>https://github.com/freakburg/DesktopCleaner</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <!-- Build the same output on any machine so releases are reproducible from the source. -->
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+</Project>
