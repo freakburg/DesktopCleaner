@@ -1,0 +1,36 @@
+﻿name: Release
+
+# Runs when a release is published on GitHub; builds the programs from the tagged source and attaches them to that release.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Test
+        run: dotnet test tests/DesktopCleaner.Tests -c Release
+      - name: Publish app and command-line tool (self-contained, no .NET install needed)
+        run: |
+          dotnet publish src/DesktopCleaner.App -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o artifacts/app
+          dotnet publish src/DesktopCleaner.Cli -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o artifacts/cli
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item artifacts/app/DesktopCleaner.exe dist/DesktopCleaner.exe
+          Compress-Archive -Path artifacts/cli/dcleaner.exe -DestinationPath dist/dcleaner-cli-win-x64.zip
+          Get-FileHash dist/* -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Set-Content dist/SHA256SUMS.txt
+      - name: Attach to the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/DesktopCleaner.exe dist/dcleaner-cli-win-x64.zip dist/SHA256SUMS.txt --clobber
