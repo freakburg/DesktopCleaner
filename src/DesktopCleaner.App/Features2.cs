@@ -115,8 +115,8 @@ public partial class MainWindow
     {
         var chosen = _od.Where(f => f.Remove).ToList();
         if (chosen.Count == 0) { OdStatus.Text = "Tick at least one file first."; return; }
-        if (MessageBox.Show($"Set {chosen.Count} file(s) ({Format.Bytes(chosen.Sum(c => c.File.Size))}) to online-only?\n\nThey stay safe in OneDrive and download again when you open them. You need an internet connection to open them later.",
-                "Free up space", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (!ConfirmDialog.Ask(this, chosen.Count == 1 ? "Free up space from this file?" : $"Free up space from {chosen.Count} files?", chosen.Count, chosen.Sum(c => c.File.Size),
+                chosen.Select(c => c.File.Path).ToList(), ConfirmKind.OnlineOnly, "Free up space")) return;
         OdFreeBtn.IsEnabled = OdScanBtn.IsEnabled = false; OdBar.IsIndeterminate = true;
         var log = new ActivityLog();
         var res = await Task.Run(() => OneDriveSpace.FreeUp(chosen.Select(c => c.File), log));
@@ -128,3 +128,4 @@ public partial class MainWindow
                         (res.Count - done.Count > 0 ? $" {res.Count - done.Count} were left alone." : "");
     }
 }
+

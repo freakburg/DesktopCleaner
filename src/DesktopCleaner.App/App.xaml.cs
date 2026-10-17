@@ -22,6 +22,7 @@ public partial class App : Application
         }
         var ti = Array.IndexOf(e.Args, "--theme");
         bool? forced = ti >= 0 && ti + 1 < e.Args.Length ? e.Args[ti + 1].Equals("light", StringComparison.OrdinalIgnoreCase) : null;
+        ScrollTuning.Install();
         Theme.Apply(this, forced);
         if (forced is null) Theme.Watch(this);
         var window = new MainWindow();
@@ -52,4 +53,5 @@ public static class LowDiskNotice
         await Task.Delay(TimeSpan.FromSeconds(16)); // keep the process alive long enough to be seen and clicked
     }
 }
+
 

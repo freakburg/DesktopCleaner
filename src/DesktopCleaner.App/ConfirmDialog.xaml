@@ -1,0 +1,44 @@
+﻿<Window x:Class="DesktopCleaner.App.ConfirmDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Please confirm" Width="520" SizeToContent="Height" MaxHeight="640"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False">
+  <Grid Margin="24,22,24,20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <DockPanel Grid.Row="0">
+      <Border x:Name="IconCircle" Width="46" Height="46" CornerRadius="23" DockPanel.Dock="Left" VerticalAlignment="Top" Margin="0,2,16,0">
+        <TextBlock x:Name="IconText" FontFamily="Segoe MDL2 Assets" FontSize="22" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Border>
+      <StackPanel>
+        <TextBlock x:Name="HeadlineText" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap"/>
+        <TextBlock x:Name="SummaryText" Margin="0,4,0,0" Foreground="{DynamicResource MutedBrush}" FontSize="14" TextWrapping="Wrap"/>
+      </StackPanel>
+    </DockPanel>
+
+    <Border Grid.Row="1" x:Name="ListBox" Margin="0,16,0,0" Padding="12,8" CornerRadius="6" BorderThickness="1"
+            BorderBrush="{DynamicResource CardBorderBrush}" Background="{DynamicResource CardBrush}">
+      <ItemsControl x:Name="ItemList">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <TextBlock TextTrimming="CharacterEllipsis" Margin="0,2" ToolTip="{Binding Full}">
+              <Run Text="{Binding Name, Mode=OneWay}"/><Run Text="{Binding Where, Mode=OneWay}" Foreground="{DynamicResource MutedBrush}" FontSize="12"/>
+            </TextBlock>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+
+    <Border Grid.Row="2" x:Name="NoteBox" Margin="0,14,0,0" Padding="12,10" CornerRadius="6">
+      <TextBlock x:Name="NoteText" TextWrapping="Wrap"/>
+    </Border>
+
+    <DockPanel Grid.Row="3" Margin="0,22,0,0" LastChildFill="False">
+      <Button x:Name="ConfirmBtn" DockPanel.Dock="Right" MinWidth="130" Padding="18,8" Foreground="White" FontWeight="SemiBold" Click="Confirm_Click" Margin="10,0,0,0"/>
+      <Button x:Name="CancelBtn" Content="Cancel" DockPanel.Dock="Right" MinWidth="100" Padding="18,8" IsDefault="True" IsCancel="True"/>
+    </DockPanel>
+  </Grid>
+</Window>
+

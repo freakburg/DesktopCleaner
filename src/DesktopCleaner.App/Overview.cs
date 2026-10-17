@@ -368,7 +368,7 @@ public partial class MainWindow
                 Title = "Leftover temporary files",
                 Detail = $"{temp.Candidates.Count:N0} scrap files that apps left behind more than {rule.OlderThanDays} days ago. Safe to clear, and you can undo from the Recycle Bin.",
                 SizeText = Format.Bytes(temp.RecoverableBytes), ButtonText = "Clear these",
-                Action = () => ClearTempAsync(rule),
+                Action = () => ClearTempAsync(rule, temp),
             });
 
         var dl = dlTask.Result;
@@ -433,10 +433,10 @@ public partial class MainWindow
         return fixes;
     }
 
-    private async Task ClearTempAsync(CleanupRule rule)
+    private async Task ClearTempAsync(CleanupRule rule, RuleReport preview)
     {
-        if (MessageBox.Show("Send old temporary files to the Recycle Bin? You can restore them from there.", "Clear temporary files",
-                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (!ConfirmDialog.Ask(this, "Clear leftover temporary files?", preview.Candidates.Count, preview.RecoverableBytes,
+                preview.Candidates.OrderByDescending(c => c.Size).Select(c => c.Path).ToList(), ConfirmKind.Recycle, "Delete files")) return;
         OvBar.IsIndeterminate = true;
         var r = await new CleanupEngine(new ActivityLog()).RunAsync(rule);
         OvBar.IsIndeterminate = false;
@@ -444,6 +444,8 @@ public partial class MainWindow
         FixList.ItemsSource = (FixList.ItemsSource as List<FixVm>)?.Where(f => f.Title != "Leftover temporary files").ToList();
     }
 }
+
+
 
 
 

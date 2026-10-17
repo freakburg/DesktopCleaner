@@ -133,7 +133,7 @@
       </StackPanel>
       <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
         <DockPanel Margin="0,6,0,0">
-          <Button x:Name="DeleteBtn" Content="Remove ticked copies" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="Delete_Click"/>
+          <Button x:Name="DeleteBtn" Content="Delete selected copies" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="Delete_Click"/>
           <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Choose a folder, then press Find duplicates."/>
         </DockPanel>
       </StackPanel>
@@ -181,7 +181,7 @@
       </StackPanel>
       <ProgressBar x:Name="PhBar" DockPanel.Dock="Top" Height="6" Minimum="0" Maximum="1" Margin="0,0,0,8"/>
       <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-        <Button x:Name="PhDeleteBtn" Content="Remove ticked photos" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="PhDelete_Click"/>
+        <Button x:Name="PhDeleteBtn" Content="Delete selected photos" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="PhDelete_Click"/>
         <Button x:Name="PhTickBtn" Content="Tick all except the ones to keep" Padding="12,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="PhTick_Click"/>
         <TextBlock x:Name="PhStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Photos are only compared on this PC. Nothing is uploaded."/>
       </DockPanel>
@@ -236,7 +236,7 @@
         </DockPanel>
       </StackPanel>
       <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-        <Button x:Name="DlDeleteBtn" Content="Remove ticked files" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="DlDelete_Click"/>
+        <Button x:Name="DlDeleteBtn" Content="Delete selected files" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="DlDelete_Click"/>
         <TextBlock x:Name="DlStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Press Look in Downloads to begin."/>
       </DockPanel>
       <ListView x:Name="DlList" BorderBrush="{DynamicResource CardBorderBrush}">
@@ -322,7 +322,7 @@
         </DockPanel>
       </StackPanel>
       <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-        <Button x:Name="EmDeleteBtn" Content="Remove ticked folders" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="EmDelete_Click"/>
+        <Button x:Name="EmDeleteBtn" Content="Delete selected folders" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="EmDelete_Click"/>
         <Button x:Name="EmAllBtn" Content="Tick all" Padding="10,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="EmAll_Click"/>
         <TextBlock x:Name="EmStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Ready when you are."/>
       </DockPanel>
@@ -434,6 +434,7 @@
     </StackPanel>
   </TabItem>  </TabControl>
 </Window>
+
 
 
 

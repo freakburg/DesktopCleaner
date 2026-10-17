@@ -113,7 +113,8 @@ public partial class MainWindow : Window
         var picks = _groups.Select(g => (g, paths: g.Files.Where(f => f.Remove).Select(f => f.Path).ToList())).Where(x => x.paths.Count > 0).ToList();
         int n = picks.Sum(x => x.paths.Count);
         if (n == 0) return;
-        if (MessageBox.Show($"Send {n} file(s) to the Recycle Bin?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        long dupBytes = picks.Sum(x => x.g.Group.FileSize * x.paths.Count);
+        if (!ConfirmDialog.Ask(this, n == 1 ? "Delete this duplicate?" : $"Delete {n} duplicate files?", n, dupBytes, picks.SelectMany(x => x.paths).ToList(), ConfirmKind.Recycle, "Delete copies")) return;
 
         SetBusy(true);
         var remover = new DuplicateRemover(new ActivityLog());
@@ -150,7 +151,7 @@ public partial class MainWindow : Window
     {
         var chosen = _downloads.Where(d => d.Remove).ToList();
         if (chosen.Count == 0) { DlStatus.Text = "Tick at least one file first."; return; }
-        if (MessageBox.Show($"Send {chosen.Count} file(s) to the Recycle Bin?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (!ConfirmDialog.Ask(this, chosen.Count == 1 ? "Delete this file?" : $"Delete {chosen.Count} files?", chosen.Count, chosen.Sum(c => c.Item.Size), chosen.Select(c => c.Path).ToList(), ConfirmKind.Recycle, "Delete files")) return;
         var res = new DownloadsReviewer(new ActivityLog()).Remove(chosen.Select(c => c.Item));
         var gone = res.Where(r => r.Status == DeleteStatus.Recycled).Select(r => r.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
         _downloads = _downloads.Where(d => !gone.Contains(d.Path)).ToList();
@@ -165,6 +166,8 @@ public partial class MainWindow : Window
         DeleteBtn.IsEnabled = false;
     }
 }
+
+
 
 
 

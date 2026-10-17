@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using DesktopCleaner.Core.Deletion;
 using DesktopCleaner.Core.EmptyFolders;
@@ -53,7 +53,7 @@ public partial class MainWindow
     {
         var chosen = _empties.Where(v => v.Remove).ToList();
         if (chosen.Count == 0) { EmStatus.Text = "Nothing is ticked."; return; }
-        if (MessageBox.Show($"Send {chosen.Count} empty folder(s) to the Recycle Bin?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (!ConfirmDialog.Ask(this, chosen.Count == 1 ? "Delete this empty folder?" : $"Delete {chosen.Count} empty folders?", chosen.Count, 0, chosen.Select(c => c.Path).ToList(), ConfirmKind.Recycle, "Delete folders")) return;
         var res = new EmptyFolderFinder(new ActivityLog()).Remove(chosen.Select(c => c.Folder));
         var gone = res.Where(r => r.Status == EmptyFolderStatus.Removed).Select(r => r.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
         _empties = _empties.Where(v => !gone.Contains(v.Path)).ToList();
@@ -61,3 +61,4 @@ public partial class MainWindow
         EmStatus.Text = $"Removed {gone.Count} folders. {res.Count - gone.Count} skipped (no longer empty or protected).";
     }
 }
+
