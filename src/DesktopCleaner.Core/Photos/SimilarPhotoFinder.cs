@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Numerics;
@@ -152,16 +152,18 @@ public sealed class PhotoRemover(ActivityLog? log = null, Action<string>? recycl
 {
     private readonly Action<string> _recycle = recycle ?? RecycleBin.Send;
 
-    public IReadOnlyList<DeleteOutcome> Remove(SimilarPhotoGroup group, IEnumerable<string> pathsToRemove)
+    public IReadOnlyList<DeleteOutcome> Remove(SimilarPhotoGroup group, IEnumerable<string> pathsToRemove, IProgress<DeleteProgress>? progress = null)
     {
         var remove = new HashSet<string>(pathsToRemove, StringComparer.OrdinalIgnoreCase);
         var survivors = group.Photos.Count(p => !remove.Contains(p.Path));
         var outcomes = new List<DeleteOutcome>();
-        foreach (var p in group.Photos.Where(p => remove.Contains(p.Path)))
+        var targets = group.Photos.Where(p => remove.Contains(p.Path)).ToList();
+        foreach (var p in targets)
         {
             var o = RemoveOne(p, survivors);
             outcomes.Add(o);
             log?.Write(o);
+            progress?.Report(new DeleteProgress(outcomes.Count, targets.Count, p.Path));
         }
         return outcomes;
     }
@@ -184,5 +186,7 @@ public sealed class PhotoRemover(ActivityLog? log = null, Action<string>? recycl
         }
     }
 }
+
+
 
 

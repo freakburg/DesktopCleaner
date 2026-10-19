@@ -93,7 +93,9 @@ public partial class MainWindow
     // ---------- App caches ----------
     private List<CacheVm> _caches = [];
 
-    private async void CaScan_Click(object s, RoutedEventArgs e)
+    private async void CaScan_Click(object s, RoutedEventArgs e) => await CaScanAsync();
+
+    private async Task CaScanAsync()
     {
         CaScanBtn.IsEnabled = CaClearBtn.IsEnabled = CaAllBtn.IsEnabled = false;
         CaBar.IsIndeterminate = true; CaStatus.Text = "Looking at your browsers and apps...";
@@ -121,17 +123,20 @@ public partial class MainWindow
         if (chosen.Count == 0) { CaStatus.Text = "Tick at least one first."; return; }
         if (!ConfirmDialog.Ask(this, chosen.Count == 1 ? "Clear this cache?" : $"Clear {chosen.Count} caches?", chosen.Count, chosen.Sum(c => c.Result.Bytes),
                 chosen.Select(c => $"{c.Name}  ({Format.Bytes(c.Result.Bytes)})").ToList(), ConfirmKind.Permanent, "Clear for good")) return;
-        CaClearBtn.IsEnabled = CaScanBtn.IsEnabled = false; CaBar.IsIndeterminate = true;
+        CaClearBtn.IsEnabled = CaScanBtn.IsEnabled = CaAllBtn.IsEnabled = false;
         var cleaner = new CacheCleaner(new ActivityLog());
+        var bar = new DeleteBar(CaBar, CaStatus, "Clearing", chosen.Sum(c => c.Result.Files));
         long freed = 0; int stuck = 0;
         foreach (var c in chosen)
         {
-            var r = await cleaner.ClearAsync(c.Result.Target);
+            var r = await cleaner.ClearAsync(c.Result.Target, default, bar.Batch());
+            bar.BatchDone(c.Result.Files);
             freed += r.FreedBytes; stuck += r.Outcomes.Count(o => !o.Succeeded);
         }
-        CaBar.IsIndeterminate = false; CaScanBtn.IsEnabled = true;
-        CaStatus.Text = $"Cleared {Format.Bytes(freed)}." + (stuck > 0 ? $" {stuck} files were still in use. Close those apps and try again." : "");
-        CaScan_Click(s, e);
+        bar.Close(); CaScanBtn.IsEnabled = true;
+        var message = $"Cleared {Format.Bytes(freed)}." + (stuck > 0 ? $" {stuck} files were still in use. Close those apps and try again." : "");
+        await CaScanAsync();      // refresh the list...
+        CaStatus.Text = message;  // ...but keep the result message visible
     }
 
     // ---------- Similar photos ----------
@@ -186,7 +191,7 @@ public partial class MainWindow
         PhList.ItemsSource = null; PhList.ItemsSource = _photoGroups;
     }
 
-    private void PhDelete_Click(object s, RoutedEventArgs e)
+    private async void PhDelete_Click(object s, RoutedEventArgs e)
     {
         var picks = _photoGroups.Select(g => (g, paths: g.Photos.Where(p => p.Remove).Select(p => p.Path).ToList())).Where(x => x.paths.Count > 0).ToList();
         int n = picks.Sum(x => x.paths.Count);
@@ -194,13 +199,21 @@ public partial class MainWindow
         var photoSizes = _photoGroups.SelectMany(g => g.Photos).Where(p => p.Remove).ToList();
         if (!ConfirmDialog.Ask(this, n == 1 ? "Delete this photo?" : $"Delete {n} photos?", n, photoSizes.Sum(p => p.Info.Size), photoSizes.Select(p => p.Path).ToList(), ConfirmKind.Recycle, "Delete photos")) return;
         var remover = new PhotoRemover(new ActivityLog());
+        PhScanBtn.IsEnabled = PhDeleteBtn.IsEnabled = PhTickBtn.IsEnabled = false;
+        var bar = new DeleteBar(PhBar, PhStatus, "Deleting", n);
         long freed = 0; int skipped = 0; var gone = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (g, paths) in picks)
-            foreach (var o in remover.Remove(g.Group, paths))
+        {
+            var progress = bar.Batch();
+            foreach (var o in await Task.Run(() => remover.Remove(g.Group, paths, progress)))
                 if (o.Succeeded) { freed += o.Bytes; gone.Add(o.Path); } else skipped++;
+            bar.BatchDone(paths.Count);
+        }
+        bar.Close(); PhScanBtn.IsEnabled = true;
         foreach (var g in _photoGroups) g.Photos.RemoveAll(p => gone.Contains(p.Path));
         _photoGroups = _photoGroups.Where(g => g.Photos.Count > 1).ToList();
         PhList.ItemsSource = null; PhList.ItemsSource = _photoGroups;
+        PhDeleteBtn.IsEnabled = PhTickBtn.IsEnabled = _photoGroups.Count > 0;
         PhStatus.Text = $"Freed {Format.Bytes(freed)}." + (skipped > 0 ? $" {skipped} left alone because they changed or are protected." : "");
     }
 
@@ -238,6 +251,12 @@ public partial class MainWindow
         };
     }
 }
+
+
+
+
+
+
 
 
 

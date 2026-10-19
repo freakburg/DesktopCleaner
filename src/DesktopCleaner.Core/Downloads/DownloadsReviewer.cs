@@ -1,4 +1,4 @@
-using DesktopCleaner.Core.Cleanup;
+﻿using DesktopCleaner.Core.Cleanup;
 using DesktopCleaner.Core.Deletion;
 
 namespace DesktopCleaner.Core.Downloads;
@@ -60,10 +60,11 @@ public sealed class DownloadsReviewer(ActivityLog? log = null, Action<string>? r
     }
 
     /// <summary>Recycles user-approved items after re-checking they are unchanged.</summary>
-    public IReadOnlyList<DeleteOutcome> Remove(IEnumerable<DownloadItem> chosen)
+    public IReadOnlyList<DeleteOutcome> Remove(IEnumerable<DownloadItem> chosen, IProgress<DeleteProgress>? progress = null)
     {
         var outcomes = new List<DeleteOutcome>();
-        foreach (var item in chosen)
+        var items = chosen.ToList();
+        foreach (var item in items)
         {
             DeleteOutcome o;
             try
@@ -82,6 +83,7 @@ public sealed class DownloadsReviewer(ActivityLog? log = null, Action<string>? r
             }
             outcomes.Add(o);
             log?.Write(o);
+            progress?.Report(new DeleteProgress(outcomes.Count, items.Count, item.Path));
         }
         return outcomes;
     }
@@ -89,4 +91,6 @@ public sealed class DownloadsReviewer(ActivityLog? log = null, Action<string>? r
     private static HashSet<string> Set(IEnumerable<string> exts) =>
         exts.Select(e => e.StartsWith('.') ? e : "." + e).ToHashSet(StringComparer.OrdinalIgnoreCase);
 }
+
+
 

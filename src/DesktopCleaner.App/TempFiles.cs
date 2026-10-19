@@ -23,7 +23,9 @@ public partial class MainWindow
 
     private int SelectedTempDays() => TmAge.SelectedIndex switch { 0 => 1, 1 => 3, 3 => 30, 4 => 0, _ => TempDefaultDays };
 
-    private async void TmScan_Click(object s, RoutedEventArgs e)
+    private async void TmScan_Click(object s, RoutedEventArgs e) => await TmScanAsync();
+
+    private async Task TmScanAsync()
     {
         TmScanBtn.IsEnabled = TmClearBtn.IsEnabled = TmAllBtn.IsEnabled = TmAge.IsEnabled = false;
         TmBar.IsIndeterminate = true; TmStatus.Text = "Looking through your temp folder...";
@@ -54,18 +56,21 @@ public partial class MainWindow
         if (!ConfirmDialog.Ask(this, chosen.Count == 1 ? "Delete this temp item?" : $"Delete {chosen.Count} temp items?", chosen.Sum(c => c.Entry.FileCount), chosen.Sum(c => c.Entry.Bytes),
                 chosen.Select(c => c.Entry.Name).ToList(), ConfirmKind.Permanent, "Delete for good")) return;
 
-        TmScanBtn.IsEnabled = TmClearBtn.IsEnabled = TmAllBtn.IsEnabled = false; TmBar.IsIndeterminate = true;
-        TmStatus.Text = "Deleting...";
+        TmScanBtn.IsEnabled = TmClearBtn.IsEnabled = TmAllBtn.IsEnabled = false;
+        var bar = new DeleteBar(TmBar, TmStatus, "Deleting", chosen.Sum(c => c.Entry.FileCount));
+        string message;
         try
         {
-            var result = await new TempCleaner(new ActivityLog()).ClearAsync(chosen.Select(c => c.Entry), _tempDays);
-            TmStatus.Text = $"Freed {Format.Bytes(result.FreedBytes)}." +
-                            (result.LeftAlone > 0 ? $" {result.LeftAlone:N0} files were in use or had changed, so they were left alone. Close other programs and try again." : "");
+            var result = await new TempCleaner(new ActivityLog()).ClearAsync(chosen.Select(c => c.Entry), _tempDays, default, bar.Batch());
+            message = $"Freed {Format.Bytes(result.FreedBytes)}." +
+                      (result.LeftAlone > 0 ? $" {result.LeftAlone:N0} files were in use or had changed, so they were left alone. Close other programs and try again." : "");
         }
-        finally { TmBar.IsIndeterminate = false; TmScanBtn.IsEnabled = true; }
-        var status = TmStatus.Text;
-        TmScan_Click(s, e);   // refresh the list
-        await Task.Delay(50);
-        TmStatus.Text = status;
+        finally { bar.Close(); TmScanBtn.IsEnabled = true; }
+        await TmScanAsync();      // refresh the list...
+        TmStatus.Text = message;  // ...but keep the result message visible
     }
 }
+
+
+
+

@@ -56,7 +56,7 @@ public sealed class CleanupEngine(ActivityLog? log = null, Action<string>? recyc
     }
 
     /// <summary>Applies the rule: re-checks each file right before sending it to the Recycle Bin.</summary>
-    public async Task<RuleReport> RunAsync(CleanupRule rule, CancellationToken ct = default)
+    public async Task<RuleReport> RunAsync(CleanupRule rule, CancellationToken ct = default, IProgress<DeleteProgress>? progress = null)
     {
         var preview = await PreviewAsync(rule, ct).ConfigureAwait(false);
         var cutoff = _now().AddDays(-rule.OlderThanDays);
@@ -67,25 +67,35 @@ public sealed class CleanupEngine(ActivityLog? log = null, Action<string>? recyc
             var o = Remove(c, cutoff);
             outcomes.Add(o);
             log?.Write(o);
+            Report(progress, outcomes.Count, preview.Candidates.Count, c.Path);
         }
         return preview with { Outcomes = outcomes };
     }
 
     /// <summary>Removes just the given files, each re-checked first (still there, unchanged, still older than <paramref name="olderThanDays"/>).</summary>
-    public Task<IReadOnlyList<DeleteOutcome>> DeleteAsync(IEnumerable<CleanupCandidate> items, int olderThanDays, CancellationToken ct = default) =>
+    public Task<IReadOnlyList<DeleteOutcome>> DeleteAsync(IEnumerable<CleanupCandidate> items, int olderThanDays, CancellationToken ct = default, IProgress<DeleteProgress>? progress = null) =>
         Task.Run<IReadOnlyList<DeleteOutcome>>(() =>
         {
             var cutoff = _now().AddDays(-olderThanDays);
             var outcomes = new List<DeleteOutcome>();
-            foreach (var c in items)
+            var list = items.ToList();
+            foreach (var c in list)
             {
                 ct.ThrowIfCancellationRequested();
                 var o = Remove(c, cutoff);
                 outcomes.Add(o);
                 log?.Write(o);
+                Report(progress, outcomes.Count, list.Count, c.Path);
             }
             return outcomes;
         }, ct);
+
+    /// <summary>Temp folders can hold tens of thousands of tiny files; reporting every one would flood the UI thread, so report in steps.</summary>
+    private static void Report(IProgress<DeleteProgress>? progress, int done, int total, string path)
+    {
+        if (progress is null) return;
+        if (done == total || done % Math.Max(1, total / 200) == 0) progress.Report(new DeleteProgress(done, total, path));
+    }
 
     private DeleteOutcome Remove(CleanupCandidate c, DateTime cutoff)
     {
@@ -113,6 +123,9 @@ public sealed class CleanupEngine(ActivityLog? log = null, Action<string>? recyc
         catch (UnauthorizedAccessException) { return true; }
     }
 }
+
+
+
 
 
 

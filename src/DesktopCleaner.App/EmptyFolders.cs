@@ -49,16 +49,25 @@ public partial class MainWindow
         finally { EmScanBtn.IsEnabled = true; }
     }
 
-    private void EmDelete_Click(object s, RoutedEventArgs e)
+    private async void EmDelete_Click(object s, RoutedEventArgs e)
     {
         var chosen = _empties.Where(v => v.Remove).ToList();
         if (chosen.Count == 0) { EmStatus.Text = "Nothing is ticked."; return; }
         if (!ConfirmDialog.Ask(this, chosen.Count == 1 ? "Delete this empty folder?" : $"Delete {chosen.Count} empty folders?", chosen.Count, 0, chosen.Select(c => c.Path).ToList(), ConfirmKind.Recycle, "Delete folders")) return;
-        var res = new EmptyFolderFinder(new ActivityLog()).Remove(chosen.Select(c => c.Folder));
+        EmScanBtn.IsEnabled = EmDeleteBtn.IsEnabled = EmAllBtn.IsEnabled = false;
+        var bar = new DeleteBar(EmBar, EmStatus, "Deleting", chosen.Count);
+        var folders = chosen.Select(c => c.Folder).ToList();
+        var progress = bar.Batch();
+        var res = await Task.Run(() => new EmptyFolderFinder(new ActivityLog()).Remove(folders, progress));
+        bar.Close(); EmScanBtn.IsEnabled = true;
         var gone = res.Where(r => r.Status == EmptyFolderStatus.Removed).Select(r => r.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
         _empties = _empties.Where(v => !gone.Contains(v.Path)).ToList();
         EmList.ItemsSource = null; EmList.ItemsSource = _empties;
+        EmDeleteBtn.IsEnabled = EmAllBtn.IsEnabled = _empties.Count > 0;
         EmStatus.Text = $"Removed {gone.Count} folders. {res.Count - gone.Count} skipped (no longer empty or protected).";
     }
 }
+
+
+
 

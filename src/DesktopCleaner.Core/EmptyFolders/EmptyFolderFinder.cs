@@ -1,4 +1,4 @@
-using DesktopCleaner.Core.Deletion;
+﻿using DesktopCleaner.Core.Deletion;
 
 namespace DesktopCleaner.Core.EmptyFolders;
 
@@ -66,10 +66,11 @@ public sealed class EmptyFolderFinder(ActivityLog? log = null, Action<string>? r
         else CollectBelow(node, found);
     }
 
-    public IReadOnlyList<EmptyFolderOutcome> Remove(IEnumerable<EmptyFolder> chosen)
+    public IReadOnlyList<EmptyFolderOutcome> Remove(IEnumerable<EmptyFolder> chosen, IProgress<DeleteProgress>? progress = null)
     {
         var results = new List<EmptyFolderOutcome>();
-        foreach (var f in chosen)
+        var folders = chosen.ToList();
+        foreach (var f in folders)
         {
             var o = RemoveOne(f.Path);
             results.Add(o);
@@ -81,6 +82,7 @@ public sealed class EmptyFolderFinder(ActivityLog? log = null, Action<string>? r
                 EmptyFolderStatus.SkippedProtected => DeleteStatus.SkippedProtected,
                 _ => DeleteStatus.Failed,
             }, 0, o.Detail ?? "empty folder"));
+            progress?.Report(new DeleteProgress(results.Count, folders.Count, f.Path));
         }
         return results;
     }
@@ -119,4 +121,6 @@ public sealed class EmptyFolderFinder(ActivityLog? log = null, Action<string>? r
             string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(s)), full, StringComparison.OrdinalIgnoreCase));
     }
 }
+
+
 

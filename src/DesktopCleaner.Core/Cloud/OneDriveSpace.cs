@@ -58,12 +58,13 @@ public static class OneDriveSpace
         }, ct);
     /// <summary>Marks the files online-only (attrib +U -P). OneDrive then removes the local copy. Runs <paramref name="runAttrib"/> per file.</summary>
     public static IReadOnlyList<DeleteOutcome> FreeUp(IEnumerable<LocalCloudFile> files, ActivityLog? log = null,
-        Func<string, int>? runAttrib = null, IEnumerable<string>? roots = null)
+        Func<string, int>? runAttrib = null, IEnumerable<string>? roots = null, IProgress<DeleteProgress>? progress = null)
     {
         runAttrib ??= RunAttrib;
         roots = (roots ?? Roots()).ToList();
         var outcomes = new List<DeleteOutcome>();
-        foreach (var f in files)
+        var list = files.ToList();
+        foreach (var f in list)
         {
             DeleteOutcome o;
             try
@@ -82,6 +83,7 @@ public static class OneDriveSpace
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { o = new(f.Path, DeleteStatus.Failed, 0, ex.Message); }
             outcomes.Add(o);
             log?.Write(o);
+            progress?.Report(new DeleteProgress(outcomes.Count, list.Count, f.Path));
         }
         return outcomes;
     }
@@ -96,5 +98,7 @@ public static class OneDriveSpace
         return p.ExitCode;
     }
 }
+
+
 
 

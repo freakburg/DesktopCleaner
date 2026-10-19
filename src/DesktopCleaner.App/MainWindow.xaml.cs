@@ -118,13 +118,20 @@ public partial class MainWindow : Window
 
         SetBusy(true);
         var remover = new DuplicateRemover(new ActivityLog());
+        var bar = new DeleteBar(Bar, StatusText, "Deleting", n);
         long freed = 0; int skipped = 0;
         var done = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (g, paths) in picks)
-            foreach (var o in await remover.RemoveAsync(g.Group, paths))
+        {
+            var progress = bar.Batch();
+            // run on a worker thread so moving files to the Recycle Bin never freezes the window
+            foreach (var o in await Task.Run(() => remover.RemoveAsync(g.Group, paths, default, progress)))
             {
                 if (o.Status == DeleteStatus.Recycled) { freed += o.Bytes; done.Add(o.Path); } else skipped++;
             }
+            bar.BatchDone(paths.Count);
+        }
+        bar.Close();
         foreach (var g in _groups) g.Files.RemoveAll(f => done.Contains(f.Path));
         _groups = _groups.Where(g => g.Files.Count > 1).ToList();
         Tree.ItemsSource = null; Tree.ItemsSource = _groups;
@@ -147,15 +154,21 @@ public partial class MainWindow : Window
         DlScanBtn.IsEnabled = true; DlDeleteBtn.IsEnabled = items.Count > 0;
     }
 
-    private void DlDelete_Click(object s, RoutedEventArgs e)
+    private async void DlDelete_Click(object s, RoutedEventArgs e)
     {
         var chosen = _downloads.Where(d => d.Remove).ToList();
         if (chosen.Count == 0) { DlStatus.Text = "Tick at least one file first."; return; }
         if (!ConfirmDialog.Ask(this, chosen.Count == 1 ? "Delete this file?" : $"Delete {chosen.Count} files?", chosen.Count, chosen.Sum(c => c.Item.Size), chosen.Select(c => c.Path).ToList(), ConfirmKind.Recycle, "Delete files")) return;
-        var res = new DownloadsReviewer(new ActivityLog()).Remove(chosen.Select(c => c.Item));
+        DlScanBtn.IsEnabled = DlDeleteBtn.IsEnabled = false;
+        var bar = new DeleteBar(DlBar, DlStatus, "Deleting", chosen.Count);
+        var items = chosen.Select(c => c.Item).ToList();
+        var progress = bar.Batch();
+        var res = await Task.Run(() => new DownloadsReviewer(new ActivityLog()).Remove(items, progress));
+        bar.Close(); DlScanBtn.IsEnabled = true;
         var gone = res.Where(r => r.Status == DeleteStatus.Recycled).Select(r => r.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
         _downloads = _downloads.Where(d => !gone.Contains(d.Path)).ToList();
         DlList.ItemsSource = null; DlList.ItemsSource = _downloads;
+        DlDeleteBtn.IsEnabled = _downloads.Count > 0;
         DlStatus.Text = $"Freed {Format.Bytes(res.Sum(r => r.Bytes))}." + (res.Any(r => r.Status != DeleteStatus.Recycled) ? $" {res.Count(r => r.Status != DeleteStatus.Recycled)} left alone because they changed or are protected." : "");
     }
 
@@ -166,6 +179,10 @@ public partial class MainWindow : Window
         DeleteBtn.IsEnabled = false;
     }
 }
+
+
+
+
 
 
 

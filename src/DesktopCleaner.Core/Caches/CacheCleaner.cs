@@ -1,4 +1,4 @@
-using DesktopCleaner.Core.Cleanup;
+﻿using DesktopCleaner.Core.Cleanup;
 using DesktopCleaner.Core.Deletion;
 
 namespace DesktopCleaner.Core.Caches;
@@ -84,7 +84,8 @@ public sealed class CacheCleaner(ActivityLog? log = null, Action<string>? delete
         return results.OrderByDescending(r => r.Bytes).ToList();
     }
 
-    public async Task<RuleReport> ClearAsync(CacheTarget target, CancellationToken ct = default) =>
-        await new CleanupEngine(log, delete, permanent: true).RunAsync(CacheCatalog.RuleFor(target), ct).ConfigureAwait(false);
+    public async Task<RuleReport> ClearAsync(CacheTarget target, CancellationToken ct = default, IProgress<DeleteProgress>? progress = null) =>
+        await new CleanupEngine(log, delete, permanent: true).RunAsync(CacheCatalog.RuleFor(target), ct, progress).ConfigureAwait(false);
 }
+
 

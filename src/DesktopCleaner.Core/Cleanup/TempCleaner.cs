@@ -46,11 +46,11 @@ public sealed class TempCleaner(ActivityLog? log = null, Action<string>? delete 
         return new TempScan(Root, olderThanDays, entries);
     }
 
-    public async Task<TempClearResult> ClearAsync(IEnumerable<TempEntry> entries, int olderThanDays, CancellationToken ct = default)
+    public async Task<TempClearResult> ClearAsync(IEnumerable<TempEntry> entries, int olderThanDays, CancellationToken ct = default, IProgress<DeleteProgress>? progress = null)
     {
         var chosen = entries.ToList();
         var outcomes = await new CleanupEngine(log, delete, clock, permanent: true)
-            .DeleteAsync(chosen.SelectMany(e => e.Files), olderThanDays, ct).ConfigureAwait(false);
+            .DeleteAsync(chosen.SelectMany(e => e.Files), olderThanDays, ct, progress).ConfigureAwait(false);
         foreach (var folder in chosen.Where(e => e.IsFolder)) RemoveEmptyFolders(folder.Path);
         return new TempClearResult(outcomes);
     }
@@ -66,3 +66,4 @@ public sealed class TempCleaner(ActivityLog? log = null, Action<string>? delete 
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* in use or not empty: leave it */ }
     }
 }
+

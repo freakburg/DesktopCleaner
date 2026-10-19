@@ -117,10 +117,13 @@ public partial class MainWindow
         if (chosen.Count == 0) { OdStatus.Text = "Tick at least one file first."; return; }
         if (!ConfirmDialog.Ask(this, chosen.Count == 1 ? "Free up space from this file?" : $"Free up space from {chosen.Count} files?", chosen.Count, chosen.Sum(c => c.File.Size),
                 chosen.Select(c => c.File.Path).ToList(), ConfirmKind.OnlineOnly, "Free up space")) return;
-        OdFreeBtn.IsEnabled = OdScanBtn.IsEnabled = false; OdBar.IsIndeterminate = true;
+        OdFreeBtn.IsEnabled = OdScanBtn.IsEnabled = false;
         var log = new ActivityLog();
-        var res = await Task.Run(() => OneDriveSpace.FreeUp(chosen.Select(c => c.File), log));
-        OdBar.IsIndeterminate = false; OdScanBtn.IsEnabled = true;
+        var bar = new DeleteBar(OdBar, OdStatus, "Freeing up", chosen.Count);
+        var files = chosen.Select(c => c.File).ToList();
+        var progress = bar.Batch();
+        var res = await Task.Run(() => OneDriveSpace.FreeUp(files, log, null, null, progress));
+        bar.Close(); OdScanBtn.IsEnabled = true;
         var done = res.Where(r => r.Succeeded).Select(r => r.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
         _od = _od.Where(f => !done.Contains(f.File.Path)).ToList();
         OdList.ItemsSource = _od; OdFreeBtn.IsEnabled = _od.Count > 0;
@@ -128,4 +131,5 @@ public partial class MainWindow
                         (res.Count - done.Count > 0 ? $" {res.Count - done.Count} were left alone." : "");
     }
 }
+
 

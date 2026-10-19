@@ -36,6 +36,8 @@ public sealed class BigFileVm
     public double Percent { get; init; }
     public required string Label { get; init; }
     public required Brush Brush { get; init; }
+    /// <summary>What kind of file this is, in plain words. Shown when you hover the bar.</summary>
+    public required string TypeName { get; init; }
 }
 
 public sealed class FixVm
@@ -52,11 +54,24 @@ public partial class MainWindow
 {
     private static readonly Dictionary<string, Brush> CategoryColors = new()
     {
-        ["Videos"] = Brush("#8E44AD"), ["Pictures"] = Brush("#2E86C1"), ["Music & audio"] = Brush("#16A085"),
-        ["Documents"] = Brush("#D68910"), ["Zip & archives"] = Brush("#CA6F1E"), ["Apps & installers"] = Brush("#C0392B"),
-        ["Code & dev files"] = Brush("#566573"), ["Temporary & logs"] = Brush("#7F8C8D"), [FileCategories.Other] = Brush("#95A5A6"),
+        ["Videos"] = Brush("#8E44AD"), ["Pictures"] = Brush("#2E86C1"), ["Music & audio"] = Brush("#E84393"),
+        ["Documents"] = Brush("#27AE60"), ["Zip & archives"] = Brush("#E67E22"), ["Apps & installers"] = Brush("#C0392B"),
+        ["Code & dev files"] = Brush("#566573"), ["Temporary & logs"] = Brush("#8D6E63"), [FileCategories.Other] = Brush("#95A5A6"),
     };
     private static readonly Brush FolderBrush = Brush("#2E86C1");
+
+    private static string PlainTypeName(string category) => category switch
+    {
+        "Videos" => "Video",
+        "Pictures" => "Picture",
+        "Music & audio" => "Music or audio",
+        "Documents" => "Document",
+        "Zip & archives" => "Archive (zip and similar)",
+        "Apps & installers" => "Application or installer",
+        "Code & dev files" => "Code or developer file",
+        "Temporary & logs" => "Temporary or log file",
+        _ => "Other (type not recognised)",
+    };
     private static Brush Brush(string hex) { var b = (SolidColorBrush)new BrushConverter().ConvertFromString(hex)!; b.Freeze(); return b; }
 
     private CancellationTokenSource? _ovCts;
@@ -295,6 +310,20 @@ public partial class MainWindow
         Tabs.SelectedIndex = 0;
         OvScan_Click(this, new RoutedEventArgs());
     }
+    /// <summary>A small color key under "Biggest files", listing only the file types that actually appear in the list.</summary>
+    private void BuildFileLegend(IReadOnlyList<string> categories)
+    {
+        FileLegend.Children.Clear();
+        foreach (var c in categories)
+        {
+            var item = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 0, 16, 4) };
+            item.Children.Add(new System.Windows.Shapes.Rectangle { Width = 12, Height = 12, RadiusX = 2, RadiusY = 2, Fill = CategoryColors.GetValueOrDefault(c, FolderBrush), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
+            item.Children.Add(new System.Windows.Controls.TextBlock { Text = PlainTypeName(c), FontSize = 12, VerticalAlignment = VerticalAlignment.Center });
+            FileLegend.Children.Add(item);
+        }
+        FileLegend.Visibility = categories.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void OpenFolder_Click(object s, RoutedEventArgs e)
     {
         if (((FrameworkElement)s).DataContext is BarVm { Path.Length: > 0 } vm && Directory.Exists(vm.Path))
@@ -341,12 +370,14 @@ public partial class MainWindow
         _report = report; _trail = [report.Root];
         RenderWhere();
         var biggest = Math.Max(1, report.LargestFiles.FirstOrDefault()?.Size ?? 1);
+        string CategoryOf(FileStat f) => FileCategories.For(System.IO.Path.GetExtension(f.Path));
         FileList.ItemsSource = report.LargestFiles.Select(f => new BigFileVm
         {
             Name = f.Name, Folder = f.Folder, Path = f.Path, Percent = 100.0 * f.Size / biggest, Label = Format.Bytes(f.Size),
-            Brush = CategoryColors.GetValueOrDefault(FileCategories.For(System.IO.Path.GetExtension(f.Path)), FolderBrush),
+            Brush = CategoryColors.GetValueOrDefault(CategoryOf(f), FolderBrush), TypeName = PlainTypeName(CategoryOf(f)),
         }).ToList();
-        FilesHeader.Visibility = FilesHint.Visibility = report.LargestFiles.Count > 0 ? Visibility.Visible : Visibility.Collapsed;        FixList.ItemsSource = fixes;
+        FilesHeader.Visibility = FilesHint.Visibility = report.LargestFiles.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        BuildFileLegend(report.LargestFiles.GroupBy(CategoryOf).OrderByDescending(g => g.Sum(f => f.Size)).Select(g => g.Key).ToList());        FixList.ItemsSource = fixes;
         FixHeader.Visibility = CatHeader.Visibility = FolderHeader.Visibility = WhereHint.Visibility = Visibility.Visible;
     }
 
@@ -433,6 +464,13 @@ public partial class MainWindow
     }
 
 }
+
+
+
+
+
+
+
 
 
 

@@ -1,8 +1,11 @@
-using DesktopCleaner.Core.Duplicates;
+﻿using DesktopCleaner.Core.Duplicates;
 
 namespace DesktopCleaner.Core.Deletion;
 
 public enum DeleteStatus { Recycled, Deleted, FreedFromPc, SkippedChanged, SkippedMissing, SkippedProtected, SkippedLastCopy, Failed }
+
+/// <summary>How far a removal has got, so the UI can show a progress bar. <paramref name="Current"/> is the file just handled.</summary>
+public sealed record DeleteProgress(int Done, int Total, string? Current);
 
 public sealed record DeleteOutcome(string Path, DeleteStatus Status, long Bytes, string? Detail = null)
 {
@@ -19,19 +22,22 @@ public sealed class DuplicateRemover(ActivityLog? log = null, Action<string>? re
     private readonly Action<string> _recycle = recycle ?? RecycleBin.Send;
 
     public async Task<IReadOnlyList<DeleteOutcome>> RemoveAsync(
-        DuplicateGroup group, IEnumerable<string> pathsToRemove, CancellationToken ct = default)
+        DuplicateGroup group, IEnumerable<string> pathsToRemove, CancellationToken ct = default, IProgress<DeleteProgress>? progress = null)
     {
         var remove = new HashSet<string>(pathsToRemove, StringComparer.OrdinalIgnoreCase);
         var outcomes = new List<DeleteOutcome>();
         var survivors = group.Files.Count(f => !remove.Contains(f.Path));
 
-        foreach (var entry in group.Files.Where(f => remove.Contains(f.Path)))
+        var targets = group.Files.Where(f => remove.Contains(f.Path)).ToList();
+        int done = 0;
+        foreach (var entry in targets)
         {
             ct.ThrowIfCancellationRequested();
             var outcome = await RemoveOneAsync(group, entry, survivors, ct);
             if (outcome.Status == DeleteStatus.Recycled) { /* survivors count already excludes removals */ }
             outcomes.Add(outcome);
             log?.Write(outcome);
+            progress?.Report(new DeleteProgress(++done, targets.Count, entry.Path));
         }
         return outcomes;
     }
@@ -63,5 +69,9 @@ public sealed class DuplicateRemover(ActivityLog? log = null, Action<string>? re
         }
     }
 }
+
+
+
+
 
 
