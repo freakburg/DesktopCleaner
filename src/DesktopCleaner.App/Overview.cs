@@ -354,21 +354,20 @@ public partial class MainWindow
     {
         var fixes = new List<FixVm>();
 
-        var rule = CleanupRule.DefaultTemp();
         // The four checks are independent and mostly disk-bound, so run them side by side.
-        var tempTask = new CleanupEngine().PreviewAsync(rule);
+        var tempTask = new TempCleaner().ScanAsync(TempDefaultDays);
         var dlTask = new DownloadsReviewer().ScanAsync();
         var cacheTask = new CacheCleaner().ScanAsync();
         var emptyTask = new EmptyFolderFinder().ScanAsync(root);
         await Task.WhenAll(tempTask, dlTask, cacheTask, emptyTask);
         var temp = tempTask.Result;
-        if (temp.Candidates.Count > 0)
+        if (temp.Entries.Count > 0)
             fixes.Add(new FixVm
             {
                 Title = "Leftover temporary files",
-                Detail = $"{temp.Candidates.Count:N0} scrap files that apps left behind more than {rule.OlderThanDays} days ago. Safe to clear, and you can undo from the Recycle Bin.",
-                SizeText = Format.Bytes(temp.RecoverableBytes), ButtonText = "Clear these",
-                Action = () => ClearTempAsync(rule, temp),
+                Detail = $"{temp.FileCount:N0} scrap files that programs left behind more than {TempDefaultDays} days ago. Safe to delete. You choose what goes.",
+                SizeText = Format.Bytes(temp.TotalBytes), ButtonText = "Review",
+                Action = () => { Tabs.SelectedItem = TempTab; TmScan_Click(this, new RoutedEventArgs()); return Task.CompletedTask; },
             });
 
         var dl = dlTask.Result;
@@ -433,17 +432,8 @@ public partial class MainWindow
         return fixes;
     }
 
-    private async Task ClearTempAsync(CleanupRule rule, RuleReport preview)
-    {
-        if (!ConfirmDialog.Ask(this, "Clear leftover temporary files?", preview.Candidates.Count, preview.RecoverableBytes,
-                preview.Candidates.OrderByDescending(c => c.Size).Select(c => c.Path).ToList(), ConfirmKind.Recycle, "Delete files")) return;
-        OvBar.IsIndeterminate = true;
-        var r = await new CleanupEngine(new ActivityLog()).RunAsync(rule);
-        OvBar.IsIndeterminate = false;
-        OvStatus.Text = $"Freed {Format.Bytes(r.FreedBytes)}. Skipped {r.Skipped.Count + r.Outcomes.Count(o => o.Status != DeleteStatus.Recycled)} files that were in use or changed.";
-        FixList.ItemsSource = (FixList.ItemsSource as List<FixVm>)?.Where(f => f.Title != "Leftover temporary files").ToList();
-    }
 }
+
 
 
 

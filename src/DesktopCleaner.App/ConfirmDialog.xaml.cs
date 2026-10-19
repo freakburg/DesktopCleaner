@@ -35,7 +35,7 @@ public partial class ConfirmDialog : Window
 
         var (accent, glyph, note) = kind switch
         {
-            ConfirmKind.Permanent => ("#C0392B", "\uE7BA", "This cannot be undone. These files are deleted for good, not sent to the Recycle Bin. The apps rebuild them automatically, so nothing you made is lost."),
+            ConfirmKind.Permanent => ("#C0392B", "\uE7BA", "This cannot be undone. These files are deleted for good, not sent to the Recycle Bin. They are temporary leftovers or caches that programs rebuild when needed, so nothing you made is lost."),
             ConfirmKind.OnlineOnly => ("#2E86C1", "\uE753", "Nothing is deleted. The files stay safe in OneDrive and download again when you open them. You need an internet connection to open them later."),
             _ => ("#C0392B", "\uE74D", "These go to the Recycle Bin, so you can get them back. Open the History tab and press Put back, or restore them from the Recycle Bin itself."),
         };
@@ -67,4 +67,5 @@ public partial class ConfirmDialog : Window
     public static bool Ask(Window owner, string headline, long count, long bytes, IReadOnlyList<string> items, ConfirmKind kind, string confirmText) =>
         new ConfirmDialog(headline, count, bytes, items, kind, confirmText) { Owner = owner }.ShowDialog() == true;
 }
+
 

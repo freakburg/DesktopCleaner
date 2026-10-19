@@ -20,6 +20,7 @@ if (args.Length == 0 || args[0] is "-h" or "--help")
           dcleaner cleanup [--apply] [--report]     dry run by default; --apply sends matches to the Recycle Bin
           dcleaner downloads [folder] [--days 30] [--large-mb 500] [--remove]
                                                     flag old installers/archives and large files; --remove asks per file
+          dcleaner temp [--days 7] [--apply]        temp-folder files older than N days (0 = everything); dry run unless --apply (deleted for good)
           dcleaner caches [--apply]                 browser/app caches; dry run by default, --apply clears them (cannot be undone, they rebuild themselves)
           dcleaner photos <folder> [--strict]       find similar photos (resized/re-saved copies)
           dcleaner onedrive [--min-mb 5]            big OneDrive files that are also stored on this PC (can be set to online-only)
@@ -41,6 +42,7 @@ if (args[0] == "downloads") return await RunDownloads(args);
 if (args[0] == "storage") return await RunStorage(args);
 if (args[0] == "empty") return await RunEmpty(args);
 if (args[0] == "caches") return await RunCaches(args);
+if (args[0] == "temp") return await RunTemp(args);
 if (args[0] == "photos") return await RunPhotos(args);
 if (args[0] == "history") return RunHistory();
 if (args[0] == "onedrive") return await RunOneDrive(args);
@@ -261,3 +263,19 @@ static int RunApps()
 
 
 
+
+static async Task<int> RunTemp(string[] args)
+{
+    int days = 7;
+    for (int i = 1; i < args.Length - 1; i++) if (args[i] == "--days") days = int.Parse(args[i + 1]);
+    var cleaner = new TempCleaner(new ActivityLog());
+    var scan = await cleaner.ScanAsync(days);
+    Console.WriteLine($"Temp folder: {scan.Root}");
+    foreach (var e in scan.Entries.Take(15)) Console.WriteLine($"{ReportWriter.Bytes(e.Bytes),10}  {e.Name}{(e.IsFolder ? "  (folder)" : "")}  ({e.FileCount} files)");
+    if (scan.Entries.Count > 15) Console.WriteLine($"  ... and {scan.Entries.Count - 15} more items");
+    Console.WriteLine($"\n{scan.FileCount} files older than {days} days, {ReportWriter.Bytes(scan.TotalBytes)}.");
+    if (!args.Contains("--apply")) { Console.WriteLine("Dry run. Re-run with --apply to delete them for good (files in use are skipped)."); return 0; }
+    var result = await cleaner.ClearAsync(scan.Entries, days);
+    Console.WriteLine($"Deleted {result.Deleted} files, freed {ReportWriter.Bytes(result.FreedBytes)}. {result.LeftAlone} left alone (in use or changed).");
+    return 0;
+}

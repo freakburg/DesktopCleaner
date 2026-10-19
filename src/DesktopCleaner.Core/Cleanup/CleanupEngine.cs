@@ -1,4 +1,4 @@
-using DesktopCleaner.Core.Deletion;
+﻿using DesktopCleaner.Core.Deletion;
 
 namespace DesktopCleaner.Core.Cleanup;
 
@@ -71,6 +71,22 @@ public sealed class CleanupEngine(ActivityLog? log = null, Action<string>? recyc
         return preview with { Outcomes = outcomes };
     }
 
+    /// <summary>Removes just the given files, each re-checked first (still there, unchanged, still older than <paramref name="olderThanDays"/>).</summary>
+    public Task<IReadOnlyList<DeleteOutcome>> DeleteAsync(IEnumerable<CleanupCandidate> items, int olderThanDays, CancellationToken ct = default) =>
+        Task.Run<IReadOnlyList<DeleteOutcome>>(() =>
+        {
+            var cutoff = _now().AddDays(-olderThanDays);
+            var outcomes = new List<DeleteOutcome>();
+            foreach (var c in items)
+            {
+                ct.ThrowIfCancellationRequested();
+                var o = Remove(c, cutoff);
+                outcomes.Add(o);
+                log?.Write(o);
+            }
+            return outcomes;
+        }, ct);
+
     private DeleteOutcome Remove(CleanupCandidate c, DateTime cutoff)
     {
         try
@@ -97,6 +113,7 @@ public sealed class CleanupEngine(ActivityLog? log = null, Action<string>? recyc
         catch (UnauthorizedAccessException) { return true; }
     }
 }
+
 
 
 

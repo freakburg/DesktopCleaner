@@ -252,7 +252,43 @@
         </ListView.View>
       </ListView>
     </DockPanel>
-  </TabItem>  <TabItem x:Name="CacheTab" Header="App caches">
+  </TabItem>  <TabItem x:Name="TempTab" Header="Temp files">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="Clear temporary files" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Programs and installers leave scrap files in your temp folder and rarely tidy up after themselves. They are safe to delete. Files that a program is using right now are skipped automatically. Temp files are deleted for good (not sent to the Recycle Bin, which would not free any space)."/>
+        <DockPanel>
+          <Button x:Name="TmScanBtn" Content="Look for temp files" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="TmScan_Click"/>
+          <TextBlock Text="Older than:" VerticalAlignment="Center" Margin="18,0,8,0" DockPanel.Dock="Left"/>
+          <ComboBox x:Name="TmAge" Width="260" DockPanel.Dock="Left" SelectedIndex="2">
+            <ComboBoxItem Content="1 day"/><ComboBoxItem Content="3 days"/><ComboBoxItem Content="7 days (recommended)"/>
+            <ComboBoxItem Content="30 days"/><ComboBoxItem Content="Everything (close other programs first)"/>
+          </ComboBox>
+          <TextBlock x:Name="TmTotal" Margin="16,0,0,0" VerticalAlignment="Center" FontSize="16" FontWeight="SemiBold" Foreground="#C0392B"/>
+        </DockPanel>
+        <TextBlock x:Name="TmFolder" Margin="0,8,0,0" Foreground="{DynamicResource MutedBrush}" FontSize="12"/>
+      </StackPanel>
+      <ProgressBar x:Name="TmBar" DockPanel.Dock="Top" Height="6" Margin="0,0,0,8"/>
+      <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+        <Button x:Name="TmClearBtn" Content="Delete selected items" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="TmClear_Click"/>
+        <Button x:Name="TmAllBtn" Content="Tick all" Padding="12,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="TmAll_Click"/>
+        <TextBlock x:Name="TmStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Press Look for temp files to see what is there."/>
+      </DockPanel>
+      <ListView x:Name="TmList" BorderBrush="{DynamicResource CardBorderBrush}">
+        <ListView.View>
+          <GridView>
+            <GridViewColumn Width="40"><GridViewColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Remove}"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
+            <GridViewColumn Header="Item" Width="430" DisplayMemberBinding="{Binding Name}"/>
+            <GridViewColumn Header="Size" Width="90" DisplayMemberBinding="{Binding SizeText}"/>
+            <GridViewColumn Header="Files" Width="70" DisplayMemberBinding="{Binding FilesText}"/>
+            <GridViewColumn Header="Last changed" Width="160" DisplayMemberBinding="{Binding ChangedText}"/>
+          </GridView>
+        </ListView.View>
+      </ListView>
+    </DockPanel>
+  </TabItem>
+  <TabItem x:Name="CacheTab" Header="App caches">
     <DockPanel Margin="14">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Clear app caches" FontSize="22" FontWeight="SemiBold"/>
@@ -434,6 +470,7 @@
     </StackPanel>
   </TabItem>  </TabControl>
 </Window>
+
 
 
 
