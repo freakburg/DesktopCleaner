@@ -9,9 +9,22 @@
       <Setter Property="MinWidth" Value="170"/>
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="FontSize" Value="14"/>
+      <Setter Property="HeaderTemplate">
+        <Setter.Value>
+          <DataTemplate>
+            <!-- Name on the left, a small icon to its right (the icon glyph comes from each TabItem's Tag). -->
+            <DockPanel MinWidth="150">
+              <TextBlock DockPanel.Dock="Right" Margin="14,0,0,0" VerticalAlignment="Center" FontSize="16" Opacity="0.85"
+                         FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                         Text="{Binding Tag, RelativeSource={RelativeSource AncestorType=TabItem}}"/>
+              <TextBlock Text="{Binding}" VerticalAlignment="Center"/>
+            </DockPanel>
+          </DataTemplate>
+        </Setter.Value>
+      </Setter>
     </Style>
   </TabControl.Resources>
-  <TabItem Header="Home">
+  <TabItem Header="Home" Tag="&#xE80F;">
     <DockPanel Margin="14">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="See what is using your storage" FontSize="22" FontWeight="SemiBold"/>
@@ -119,7 +132,7 @@
       </ScrollViewer>
     </DockPanel>
   </TabItem>
-  <TabItem x:Name="DupTab" Header="Duplicate files">
+  <TabItem x:Name="DupTab" Header="Duplicate files" Tag="&#xE8C8;">
     <DockPanel Margin="14">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Find duplicate files" FontSize="22" FontWeight="SemiBold"/>
@@ -163,7 +176,7 @@
       </TreeView>
     </DockPanel>
   </TabItem>
-  <TabItem x:Name="PhotoTab" Header="Similar photos">
+  <TabItem x:Name="PhotoTab" Header="Similar photos" Tag="&#xE91B;">
     <DockPanel Margin="14">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Find similar photos" FontSize="22" FontWeight="SemiBold"/>
@@ -220,7 +233,7 @@
       </ListBox>
     </DockPanel>
   </TabItem>
-  <TabItem x:Name="DlTab" Header="Downloads">
+  <TabItem x:Name="DlTab" Header="Downloads" Tag="&#xE896;">
     <DockPanel Margin="14">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Review your Downloads" FontSize="22" FontWeight="SemiBold"/>
@@ -254,7 +267,7 @@
         </ListView.View>
       </ListView>
     </DockPanel>
-  </TabItem>  <TabItem x:Name="TempTab" Header="Temp files">
+  </TabItem>  <TabItem x:Name="TempTab" Header="Temp files" Tag="&#xE74D;">
     <DockPanel Margin="14">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Clear temporary files" FontSize="22" FontWeight="SemiBold"/>
@@ -290,7 +303,7 @@
       </ListView>
     </DockPanel>
   </TabItem>
-  <TabItem x:Name="CacheTab" Header="App caches">
+  <TabItem x:Name="CacheTab" Header="App caches" Tag="&#xE945;">
     <DockPanel Margin="14">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Clear app caches" FontSize="22" FontWeight="SemiBold"/>
@@ -319,7 +332,7 @@
       </ListView>
     </DockPanel>
   </TabItem>
-  <TabItem x:Name="OneDriveTab" Header="OneDrive">
+  <TabItem x:Name="OneDriveTab" Header="OneDrive" Tag="&#xE753;">
     <DockPanel Margin="14">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Free up space from OneDrive" FontSize="22" FontWeight="SemiBold"/>
@@ -347,7 +360,7 @@
       </ListView>
     </DockPanel>
   </TabItem>
-  <TabItem x:Name="EmptyTab" Header="Empty folders">
+  <TabItem x:Name="EmptyTab" Header="Empty folders" Tag="&#xE838;">
     <DockPanel Margin="14">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Find empty folders" FontSize="22" FontWeight="SemiBold"/>
@@ -377,7 +390,7 @@
       </ListView>
     </DockPanel>
   </TabItem>
-  <TabItem x:Name="AppsTab" Header="Installed apps">
+  <TabItem x:Name="AppsTab" Header="Installed apps" Tag="&#xE71D;">
     <DockPanel Margin="14">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Programs taking up space" FontSize="22" FontWeight="SemiBold"/>
@@ -401,7 +414,7 @@
       </ListView>
     </DockPanel>
   </TabItem>
-  <TabItem x:Name="SchedTab" Header="Weekly report">
+  <TabItem x:Name="SchedTab" Header="Weekly report" Tag="&#xE787;">
     <DockPanel Margin="14">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Get a weekly report" FontSize="22" FontWeight="SemiBold"/>
@@ -429,7 +442,7 @@
       </Grid>
     </DockPanel>
   </TabItem>
-  <TabItem x:Name="HistTab" Header="History">
+  <TabItem x:Name="HistTab" Header="History" Tag="&#xE81C;">
     <DockPanel Margin="14">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="What was removed" FontSize="22" FontWeight="SemiBold"/>
@@ -453,7 +466,7 @@
         </ListView.View>
       </ListView>
     </DockPanel>
-  </TabItem>  <TabItem x:Name="SettingsTab" Header="Settings">
+  </TabItem>  <TabItem x:Name="SettingsTab" Header="Settings" Tag="&#xE713;">
     <StackPanel Margin="14">
       <TextBlock Text="Settings" FontSize="22" FontWeight="SemiBold"/>
       <TextBlock Margin="0,14,0,4" FontWeight="SemiBold" Text="Right-click menu"/>
@@ -473,6 +486,8 @@
     </StackPanel>
   </TabItem>  </TabControl>
 </Window>
+
+
 
 
 
