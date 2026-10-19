@@ -1,11 +1,12 @@
 ﻿<Window x:Class="DesktopCleaner.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Desktop Cleaner" Height="700" Width="960">
+        Title="Desktop Cleaner" Height="740" Width="1020" MinHeight="560" MinWidth="820">
   <TabControl x:Name="Tabs" TabStripPlacement="Left" SelectionChanged="Tabs_Changed">
   <TabControl.Resources>
     <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
-      <Setter Property="Padding" Value="16,10"/>
+      <Setter Property="Padding" Value="16,5"/>
+      <Setter Property="MinHeight" Value="0"/>
       <Setter Property="MinWidth" Value="170"/>
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="FontSize" Value="14"/>
@@ -137,7 +138,7 @@
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Find duplicate files" FontSize="22" FontWeight="SemiBold"/>
         <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
-                   Text="Finds files that are exact copies of each other, even if the names differ. In each group we tick every copy except the first. Untick any you want to keep. At least one copy of every file always stays."/>
+                   Text="Finds files that are exact copies of each other, even if the names differ. In each group we select every copy except the first. Deselect any you want to keep. At least one copy of every file always stays."/>
         <DockPanel>
           <Button x:Name="ScanBtn" Content="Find duplicates" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="Scan_Click"/>
           <Button x:Name="CancelBtn" Content="Stop" Padding="14,6" Margin="8,0,0,0" DockPanel.Dock="Left" IsEnabled="False" Click="Cancel_Click"/>
@@ -181,7 +182,7 @@
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Find similar photos" FontSize="22" FontWeight="SemiBold"/>
         <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
-                   Text="Finds photos that look alike: resized, re-saved or slightly edited copies that exact-match tools miss. We mark the sharpest one in each group as the one to keep. Nothing is ticked for you."/>
+                   Text="Finds photos that look alike: resized, re-saved or slightly edited copies that exact-match tools miss. We mark the sharpest one in each group as the one to keep. Nothing is selected for you."/>
         <DockPanel>
           <Button x:Name="PhScanBtn" Content="Find similar photos" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="PhScan_Click"/>
           <Button x:Name="PhStopBtn" Content="Stop" Padding="14,6" Margin="8,0,0,0" DockPanel.Dock="Left" IsEnabled="False" Click="PhStop_Click"/>
@@ -196,7 +197,7 @@
       <ProgressBar x:Name="PhBar" DockPanel.Dock="Top" Height="6" Minimum="0" Maximum="1" Margin="0,0,0,8"/>
       <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
         <Button x:Name="PhDeleteBtn" Content="Delete selected photos" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="PhDelete_Click"/>
-        <Button x:Name="PhTickBtn" Content="Tick all except the ones to keep" Padding="12,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="PhTick_Click"/>
+        <Button x:Name="PhSelectBtn" Content="Select all except the ones to keep" Padding="12,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="PhSelect_Click"/>
         <TextBlock x:Name="PhStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Photos are only compared on this PC. Nothing is uploaded."/>
       </DockPanel>
       <ListBox x:Name="PhList" BorderBrush="{DynamicResource CardBorderBrush}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
@@ -233,12 +234,67 @@
       </ListBox>
     </DockPanel>
   </TabItem>
+  <TabItem x:Name="VideoTab" Header="Videos" Tag="&#xE714;">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="Find your videos" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Videos are usually the biggest files on a PC. This finds every video (MP4, MKV, MOV, AVI and more) and lists them biggest first, so you can see what is worth keeping. Nothing is selected for you, and deleted videos go to the Recycle Bin."/>
+        <DockPanel>
+          <Button x:Name="VdScanBtn" Content="Find videos" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="VdScan_Click"/>
+          <Button x:Name="VdStopBtn" Content="Stop" Padding="14,6" Margin="8,0,0,0" DockPanel.Dock="Left" IsEnabled="False" Click="VdStop_Click"/>
+          <TextBlock Text="Where to look:" VerticalAlignment="Center" Margin="18,0,8,0" DockPanel.Dock="Left"/>
+          <ComboBox x:Name="VdScope" Width="330" DockPanel.Dock="Left" SelectedIndex="0" SelectionChanged="VdScope_Changed">
+            <ComboBoxItem Content="My user folder (Videos, Downloads, Desktop...)"/>
+            <ComboBoxItem Content="Entire computer (all drives, takes a few minutes)"/>
+            <ComboBoxItem Content="Another folder..."/>
+          </ComboBox>
+          <TextBlock x:Name="VdFolder" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+        </DockPanel>
+        <WrapPanel Margin="0,10,0,0" x:Name="VdFilters" IsEnabled="False">
+          <TextBlock Text="Show:" VerticalAlignment="Center" Margin="0,0,8,4"/>
+          <ComboBox x:Name="VdType" Width="260" Margin="0,0,16,4" SelectionChanged="VdFilter_Changed"/>
+          <TextBlock Text="Size:" VerticalAlignment="Center" Margin="0,0,8,4"/>
+          <ComboBox x:Name="VdSize" Width="130" Margin="0,0,16,4" SelectedIndex="0" SelectionChanged="VdFilter_Changed">
+            <ComboBoxItem Content="Any size"/><ComboBoxItem Content="50 MB or more"/><ComboBoxItem Content="100 MB or more"/>
+            <ComboBoxItem Content="500 MB or more"/><ComboBoxItem Content="1 GB or more"/>
+          </ComboBox>
+          <TextBlock Text="Sort:" VerticalAlignment="Center" Margin="0,0,8,4"/>
+          <ComboBox x:Name="VdSort" Width="150" Margin="0,0,16,4" SelectedIndex="0" SelectionChanged="VdFilter_Changed">
+            <ComboBoxItem Content="Biggest first"/><ComboBoxItem Content="Smallest first"/><ComboBoxItem Content="Newest first"/>
+            <ComboBoxItem Content="Oldest first"/><ComboBoxItem Content="Name (A to Z)"/>
+          </ComboBox>
+          <TextBlock x:Name="VdSummary" VerticalAlignment="Center" Margin="0,0,0,4" FontWeight="SemiBold" Foreground="#C0392B"/>
+        </WrapPanel>
+      </StackPanel>
+      <ProgressBar x:Name="VdBar" DockPanel.Dock="Top" Height="6" Margin="0,0,0,8"/>
+      <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+        <Button x:Name="VdDeleteBtn" Content="Delete selected videos" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="VdDelete_Click"/>
+        <Button x:Name="VdShowBtn" Content="Show in folder" Padding="12,6" Margin="0,0,8,0" DockPanel.Dock="Right" IsEnabled="False" Click="VdShow_Click"/>
+        <Button x:Name="VdPlayBtn" Content="Play" Padding="12,6" Margin="0,0,8,0" DockPanel.Dock="Right" IsEnabled="False" Click="VdPlay_Click"/>
+        <Button x:Name="VdSelectBtn" Content="Select all shown" Padding="12,6" Margin="0,0,8,0" DockPanel.Dock="Right" IsEnabled="False" Click="VdSelect_Click"/>
+        <TextBlock x:Name="VdStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis" Text="Press Find videos to begin."/>
+      </DockPanel>
+      <ListView x:Name="VdList" BorderBrush="{DynamicResource CardBorderBrush}" SelectionMode="Single" SelectionChanged="VdList_Changed" MouseDoubleClick="VdPlay_Click">
+        <ListView.View>
+          <GridView>
+            <GridViewColumn Width="40"><GridViewColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Remove}"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
+            <GridViewColumn Header="Video" Width="330" DisplayMemberBinding="{Binding Name}"/>
+            <GridViewColumn Header="Size" Width="90" DisplayMemberBinding="{Binding SizeText}"/>
+            <GridViewColumn Header="Type" Width="60" DisplayMemberBinding="{Binding TypeText}"/>
+            <GridViewColumn Header="Modified" Width="110" DisplayMemberBinding="{Binding ModifiedText}"/>
+            <GridViewColumn Header="In folder" Width="400" DisplayMemberBinding="{Binding Folder}"/>
+          </GridView>
+        </ListView.View>
+      </ListView>
+    </DockPanel>
+  </TabItem>
   <TabItem x:Name="DlTab" Header="Downloads" Tag="&#xE896;">
     <DockPanel Margin="14">
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Review your Downloads" FontSize="22" FontWeight="SemiBold"/>
         <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
-                   Text="Lists old setup files, ZIP archives and very large files in your Downloads folder. Nothing is ticked for you. Tick what you no longer need; it goes to the Recycle Bin."/>
+                   Text="Lists old setup files, ZIP archives and very large files in your Downloads folder. Nothing is selected for you. Select what you no longer need; it goes to the Recycle Bin."/>
         <DockPanel>
           <Button x:Name="DlScanBtn" Content="Look in Downloads" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="DlScan_Click"/>
           <TextBlock Text="Count a file as old after" VerticalAlignment="Center" Margin="18,0,6,0" DockPanel.Dock="Left"/>
@@ -276,18 +332,19 @@
         <DockPanel>
           <Button x:Name="TmScanBtn" Content="Look for temp files" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="TmScan_Click"/>
           <TextBlock Text="Older than:" VerticalAlignment="Center" Margin="18,0,8,0" DockPanel.Dock="Left"/>
-          <ComboBox x:Name="TmAge" Width="260" DockPanel.Dock="Left" SelectedIndex="2">
+          <ComboBox x:Name="TmAge" Width="300" DockPanel.Dock="Left" HorizontalAlignment="Left" SelectedIndex="2">
             <ComboBoxItem Content="1 day"/><ComboBoxItem Content="3 days"/><ComboBoxItem Content="7 days (recommended)"/>
             <ComboBoxItem Content="30 days"/><ComboBoxItem Content="Everything (close other programs first)"/>
           </ComboBox>
-          <TextBlock x:Name="TmTotal" Margin="16,0,0,0" VerticalAlignment="Center" FontSize="16" FontWeight="SemiBold" Foreground="#C0392B"/>
         </DockPanel>
+        <TextBlock x:Name="TmTotal" Margin="0,8,0,0" FontSize="16" FontWeight="SemiBold" Foreground="#C0392B"/>
         <TextBlock x:Name="TmFolder" Margin="0,8,0,0" Foreground="{DynamicResource MutedBrush}" FontSize="12"/>
+        <TextBlock x:Name="TmNote" Margin="0,4,0,0" TextWrapping="Wrap" Foreground="#C97B00" Visibility="Collapsed"/>
       </StackPanel>
       <ProgressBar x:Name="TmBar" DockPanel.Dock="Top" Height="6" Margin="0,0,0,8"/>
       <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
         <Button x:Name="TmClearBtn" Content="Delete selected items" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="TmClear_Click"/>
-        <Button x:Name="TmAllBtn" Content="Tick all" Padding="12,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="TmAll_Click"/>
+        <Button x:Name="TmAllBtn" Content="Select all" Padding="12,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="TmAll_Click"/>
         <TextBlock x:Name="TmStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Press Look for temp files to see what is there."/>
       </DockPanel>
       <ListView x:Name="TmList" BorderBrush="{DynamicResource CardBorderBrush}">
@@ -316,8 +373,8 @@
       </StackPanel>
       <ProgressBar x:Name="CaBar" DockPanel.Dock="Top" Height="6" Margin="0,0,0,8"/>
       <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-        <Button x:Name="CaClearBtn" Content="Clear ticked caches" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="CaClear_Click"/>
-        <Button x:Name="CaAllBtn" Content="Tick all" Padding="12,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="CaAll_Click"/>
+        <Button x:Name="CaClearBtn" Content="Clear selected caches" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="CaClear_Click"/>
+        <Button x:Name="CaAllBtn" Content="Select all" Padding="12,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="CaAll_Click"/>
         <TextBlock x:Name="CaStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Press Look for caches to see what is using space."/>
       </DockPanel>
       <ListView x:Name="CaList" BorderBrush="{DynamicResource CardBorderBrush}">
@@ -345,7 +402,7 @@
       </StackPanel>
       <ProgressBar x:Name="OdBar" DockPanel.Dock="Top" Height="6" Margin="0,0,0,8"/>
       <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-        <Button x:Name="OdFreeBtn" Content="Free up ticked files" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="OdFree_Click"/>
+        <Button x:Name="OdFreeBtn" Content="Free up selected files" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="OdFree_Click"/>
         <TextBlock x:Name="OdStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Press Find files to free up."/>
       </DockPanel>
       <ListView x:Name="OdList" BorderBrush="{DynamicResource CardBorderBrush}">
@@ -365,7 +422,7 @@
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Find empty folders" FontSize="22" FontWeight="SemiBold"/>
         <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
-                   Text="Empty folders are harmless clutter. Pick a place, review the list, and tick the ones to remove. They go to the Recycle Bin."/>
+                   Text="Empty folders are harmless clutter. Pick a place, review the list, and select the ones to remove. They go to the Recycle Bin."/>
         <DockPanel>
           <Button x:Name="EmScanBtn" Content="Find empty folders" Padding="18,6" DockPanel.Dock="Left" Click="EmScan_Click"/>
           <Button Content="Choose folder..." Padding="12,6" Margin="8,0,0,0" DockPanel.Dock="Left" Click="EmBrowse_Click"/>
@@ -374,7 +431,7 @@
       </StackPanel>
       <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
         <Button x:Name="EmDeleteBtn" Content="Delete selected folders" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="EmDelete_Click"/>
-        <Button x:Name="EmAllBtn" Content="Tick all" Padding="10,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="EmAll_Click"/>
+        <Button x:Name="EmAllBtn" Content="Select all" Padding="10,6" Margin="0,0,10,0" DockPanel.Dock="Right" IsEnabled="False" Click="EmAll_Click"/>
         <TextBlock x:Name="EmStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Ready when you are."/>
       </DockPanel>
       <ProgressBar x:Name="EmBar" DockPanel.Dock="Top" Height="6" Margin="0,0,0,8"/>
@@ -486,6 +543,13 @@
     </StackPanel>
   </TabItem>  </TabControl>
 </Window>
+
+
+
+
+
+
+
 
 
 

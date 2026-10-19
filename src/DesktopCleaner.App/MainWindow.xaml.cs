@@ -150,14 +150,14 @@ public partial class MainWindow : Window
         var items = await new DownloadsReviewer().ScanAsync(null, new DownloadsOptions { OldAfterDays = days, LargeThresholdBytes = mb * 1024 * 1024 });
         _downloads = items.Select(i => new DownloadVm { Item = i }).ToList();
         DlList.ItemsSource = _downloads;
-        DlStatus.Text = items.Count == 0 ? "Nothing worth a look. Your Downloads are tidy." : $"{items.Count} files worth a look, {Format.Bytes(items.Sum(i => i.Size))} in total. Tick the ones you want to remove.";
+        DlStatus.Text = items.Count == 0 ? "Nothing worth a look. Your Downloads are tidy." : $"{items.Count} files worth a look, {Format.Bytes(items.Sum(i => i.Size))} in total. Select the ones you want to remove.";
         DlScanBtn.IsEnabled = true; DlDeleteBtn.IsEnabled = items.Count > 0;
     }
 
     private async void DlDelete_Click(object s, RoutedEventArgs e)
     {
         var chosen = _downloads.Where(d => d.Remove).ToList();
-        if (chosen.Count == 0) { DlStatus.Text = "Tick at least one file first."; return; }
+        if (chosen.Count == 0) { DlStatus.Text = "Select at least one file first."; return; }
         if (!ConfirmDialog.Ask(this, chosen.Count == 1 ? "Delete this file?" : $"Delete {chosen.Count} files?", chosen.Count, chosen.Sum(c => c.Item.Size), chosen.Select(c => c.Path).ToList(), ConfirmKind.Recycle, "Delete files")) return;
         DlScanBtn.IsEnabled = DlDeleteBtn.IsEnabled = false;
         var bar = new DeleteBar(DlBar, DlStatus, "Deleting", chosen.Count);
@@ -179,6 +179,7 @@ public partial class MainWindow : Window
         DeleteBtn.IsEnabled = false;
     }
 }
+
 
 
 

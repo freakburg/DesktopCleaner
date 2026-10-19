@@ -105,7 +105,7 @@ public partial class MainWindow
             _caches = found.Where(f => f.Bytes > 0).Select(f => new CacheVm { Result = f }).ToList();
             CaList.ItemsSource = _caches;
             CaTotal.Text = _caches.Count == 0 ? "" : $"{Format.Bytes(_caches.Sum(c => c.Result.Bytes))} can be cleared";
-            CaStatus.Text = _caches.Count == 0 ? "No caches worth clearing right now." : "Tick the ones to clear, then press Clear ticked caches.";
+            CaStatus.Text = _caches.Count == 0 ? "No caches worth clearing right now." : "Select the ones to clear, then press Clear selected caches.";
             CaClearBtn.IsEnabled = CaAllBtn.IsEnabled = _caches.Count > 0;
         }
         finally { CaScanBtn.IsEnabled = true; CaBar.IsIndeterminate = false; }
@@ -120,7 +120,7 @@ public partial class MainWindow
     private async void CaClear_Click(object s, RoutedEventArgs e)
     {
         var chosen = _caches.Where(c => c.Remove).ToList();
-        if (chosen.Count == 0) { CaStatus.Text = "Tick at least one first."; return; }
+        if (chosen.Count == 0) { CaStatus.Text = "Select at least one first."; return; }
         if (!ConfirmDialog.Ask(this, chosen.Count == 1 ? "Clear this cache?" : $"Clear {chosen.Count} caches?", chosen.Count, chosen.Sum(c => c.Result.Bytes),
                 chosen.Select(c => $"{c.Name}  ({Format.Bytes(c.Result.Bytes)})").ToList(), ConfirmKind.Permanent, "Clear for good")) return;
         CaClearBtn.IsEnabled = CaScanBtn.IsEnabled = CaAllBtn.IsEnabled = false;
@@ -156,7 +156,7 @@ public partial class MainWindow
         if (!Directory.Exists(PhFolder.Text)) { PhStatus.Text = "Choose a folder of photos first."; return; }
         var distance = PhStrict.SelectedIndex switch { 0 => 2, 2 => 10, _ => 6 };
         _phCts = new CancellationTokenSource();
-        PhScanBtn.IsEnabled = PhDeleteBtn.IsEnabled = PhTickBtn.IsEnabled = false; PhStopBtn.IsEnabled = true;
+        PhScanBtn.IsEnabled = PhDeleteBtn.IsEnabled = PhSelectBtn.IsEnabled = false; PhStopBtn.IsEnabled = true;
         PhList.ItemsSource = null;
         var progress = new Progress<PhotoProgress>(p =>
         {
@@ -181,11 +181,11 @@ public partial class MainWindow
         finally
         {
             PhScanBtn.IsEnabled = true; PhStopBtn.IsEnabled = false; PhBar.Value = 0;
-            PhDeleteBtn.IsEnabled = PhTickBtn.IsEnabled = _photoGroups.Count > 0;
+            PhDeleteBtn.IsEnabled = PhSelectBtn.IsEnabled = _photoGroups.Count > 0;
         }
     }
 
-    private void PhTick_Click(object s, RoutedEventArgs e)
+    private void PhSelect_Click(object s, RoutedEventArgs e)
     {
         foreach (var p in _photoGroups.SelectMany(g => g.Photos)) p.Remove = !p.IsKeep;
         PhList.ItemsSource = null; PhList.ItemsSource = _photoGroups;
@@ -195,11 +195,11 @@ public partial class MainWindow
     {
         var picks = _photoGroups.Select(g => (g, paths: g.Photos.Where(p => p.Remove).Select(p => p.Path).ToList())).Where(x => x.paths.Count > 0).ToList();
         int n = picks.Sum(x => x.paths.Count);
-        if (n == 0) { PhStatus.Text = "Tick at least one photo first."; return; }
+        if (n == 0) { PhStatus.Text = "Select at least one photo first."; return; }
         var photoSizes = _photoGroups.SelectMany(g => g.Photos).Where(p => p.Remove).ToList();
         if (!ConfirmDialog.Ask(this, n == 1 ? "Delete this photo?" : $"Delete {n} photos?", n, photoSizes.Sum(p => p.Info.Size), photoSizes.Select(p => p.Path).ToList(), ConfirmKind.Recycle, "Delete photos")) return;
         var remover = new PhotoRemover(new ActivityLog());
-        PhScanBtn.IsEnabled = PhDeleteBtn.IsEnabled = PhTickBtn.IsEnabled = false;
+        PhScanBtn.IsEnabled = PhDeleteBtn.IsEnabled = PhSelectBtn.IsEnabled = false;
         var bar = new DeleteBar(PhBar, PhStatus, "Deleting", n);
         long freed = 0; int skipped = 0; var gone = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (g, paths) in picks)
@@ -213,7 +213,7 @@ public partial class MainWindow
         foreach (var g in _photoGroups) g.Photos.RemoveAll(p => gone.Contains(p.Path));
         _photoGroups = _photoGroups.Where(g => g.Photos.Count > 1).ToList();
         PhList.ItemsSource = null; PhList.ItemsSource = _photoGroups;
-        PhDeleteBtn.IsEnabled = PhTickBtn.IsEnabled = _photoGroups.Count > 0;
+        PhDeleteBtn.IsEnabled = PhSelectBtn.IsEnabled = _photoGroups.Count > 0;
         PhStatus.Text = $"Freed {Format.Bytes(freed)}." + (skipped > 0 ? $" {skipped} left alone because they changed or are protected." : "");
     }
 
@@ -251,6 +251,7 @@ public partial class MainWindow
         };
     }
 }
+
 
 
 

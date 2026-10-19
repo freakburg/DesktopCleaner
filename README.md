@@ -19,7 +19,9 @@ A command-line version (`dcleaner.exe`) is also on the release page.
 | **Home** | Scans a folder and shows what is using space: by file type, by folder (with a drill-down bar view and a treemap "map"), and the biggest files. Shows what grew since your last check and suggests what to clear up. Reports can be saved as a printable page or CSV. |
 | **Duplicate files** | Finds exact copies (size, then partial hash, then full SHA-256). You pick which copies to remove; one always stays. |
 | **Similar photos** | Finds resized or re-saved copies using a perceptual hash, with thumbnails and a suggested best-quality keeper. |
+| **Videos** | Finds every video (MP4, MKV, MOV, AVI and more) on your user folder, one folder or the whole computer. Filter by type and size, sort, play, show in folder, and delete the ones you pick. |
 | **Downloads** | Flags old installers, ZIP archives and very large files for review. |
+| **Temp files** | Lists leftovers in your temp folder, including empty folders programs leave behind, with an age filter. Files a program is using are skipped. |
 | **App caches** | Clears browser and app caches (Chrome, Edge, Brave, Firefox, Discord, npm, pip, NuGet and more). Logins, history and bookmarks are never touched. |
 | **OneDrive** | Sets big downloaded OneDrive files back to online-only ("Free up space"). Nothing is deleted. |
 | **Empty folders** | Finds and removes empty folders. |
@@ -30,7 +32,7 @@ A command-line version (`dcleaner.exe`) is also on the release page.
 
 ## Safety model
 
-- Nothing is removed without a confirmation. Review lists start with nothing ticked (duplicates tick the extra copies, and always keep one).
+- Nothing is removed without a confirmation. Review lists start with nothing selected (duplicates select the extra copies, and always keep one).
 - Files go to the **Recycle Bin**. The exception is app caches, which rebuild themselves, so they are deleted directly. This is stated in the app.
 - Before any removal, each file is re-checked (size, time, and content hash for duplicates) in case it changed after the scan.
 - Windows, Program Files and standard user folders are protected. Automatic rules refuse personal folders (Documents, Pictures, Desktop) and cloud-sync folders.
@@ -44,6 +46,8 @@ A command-line version (`dcleaner.exe`) is also on the release page.
 dcleaner dupes <folder> [--min-size <bytes>] [--delete-extras]
 dcleaner photos <folder> [--strict]
 dcleaner cleanup [--apply] [--report]
+dcleaner videos [folder] [--all-drives] [--min-mb N] [--type .mp4]
+dcleaner temp [--days 7] [--apply]
 dcleaner downloads [folder] [--days 30] [--large-mb 500] [--remove]
 dcleaner caches [--apply]
 dcleaner storage <folder> [--top 10] [--threads N]
@@ -91,3 +95,7 @@ Notes on the engineering: scans run off the UI thread with cancellation and prog
 ## License
 
 [MIT](LICENSE)
+
+
+
+

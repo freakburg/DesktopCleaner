@@ -1,4 +1,4 @@
-namespace DesktopCleaner.Core.Storage;
+﻿namespace DesktopCleaner.Core.Storage;
 
 public sealed record CategoryStat(string Name, long Bytes, long Count);
 
@@ -7,9 +7,19 @@ public static class FileCategories
 {
     public const string Other = "Other";
 
+    /// <summary>
+    /// Every video container we recognise. ".ts" is left out on purpose: it is also the TypeScript source extension,
+    /// and counting code files as videos would be worse than missing the rare transport-stream video.
+    /// </summary>
+    public static readonly IReadOnlyList<string> VideoExtensions =
+    [
+        ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".webm", ".flv", ".m4v", ".mpg", ".mpeg", ".m2ts", ".mts",
+        ".3gp", ".vob", ".ogv", ".f4v", ".mxf", ".braw",
+    ];
+
     private static readonly Dictionary<string, string[]> Map = new()
     {
-        ["Videos"] = [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".webm", ".flv", ".m4v"],
+        ["Videos"] = [.. VideoExtensions],
         ["Pictures"] = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".heic", ".tif", ".tiff", ".raw", ".psd", ".svg"],
         ["Music & audio"] = [".mp3", ".wav", ".flac", ".aac", ".m4a", ".ogg", ".wma"],
         ["Documents"] = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".rtf", ".odt", ".csv", ".md"],
@@ -29,3 +39,4 @@ public static class FileCategories
              .Select(g => new CategoryStat(g.Key, g.Sum(s => s.Bytes), g.Sum(s => s.Count)))
              .OrderByDescending(c => c.Bytes).ToList();
 }
+

@@ -396,7 +396,7 @@ public partial class MainWindow
             fixes.Add(new FixVm
             {
                 Title = "Leftover temporary files",
-                Detail = $"{temp.FileCount:N0} scrap files that programs left behind more than {TempDefaultDays} days ago. Safe to delete. You choose what goes.",
+                Detail = $"{temp.FileCount:N0} scrap files" + (temp.EmptyFolders > 0 ? $" and {temp.EmptyFolders:N0} empty folders" : "") + $" that programs left behind more than {TempDefaultDays} days ago. Safe to delete. You choose what goes.",
                 SizeText = Format.Bytes(temp.TotalBytes), ButtonText = "Review",
                 Action = () => { Tabs.SelectedItem = TempTab; TmScan_Click(this, new RoutedEventArgs()); return Task.CompletedTask; },
             });
@@ -406,7 +406,7 @@ public partial class MainWindow
             fixes.Add(new FixVm
             {
                 Title = "Old setup files, ZIPs and big downloads",
-                Detail = $"{dl.Count} files in your Downloads folder are worth a look. You choose what goes. Nothing is ticked for you.",
+                Detail = $"{dl.Count} files in your Downloads folder are worth a look. You choose what goes. Nothing is selected for you.",
                 SizeText = Format.Bytes(dl.Sum(i => i.Size)), ButtonText = "Review",
                 Action = () => { Tabs.SelectedItem = DlTab; DlScan_Click(this, new RoutedEventArgs()); return Task.CompletedTask; },
             });
@@ -457,6 +457,8 @@ public partial class MainWindow
             fixes.Add(new FixVm
             {
                 Title = $"{top.Name} are your biggest space user",
+                ButtonText = top.Name == "Videos" ? "Review videos" : "",
+                Action = top.Name == "Videos" ? () => { ReviewVideosIn(root); return Task.CompletedTask; } : null,
                 Detail = $"They make up {100.0 * top.Bytes / report.TotalBytes:F0}% of this folder. Look through the biggest folders below for things you no longer need.",
                 SizeText = Format.Bytes(top.Bytes),
             });
@@ -464,6 +466,9 @@ public partial class MainWindow
     }
 
 }
+
+
+
 
 
 

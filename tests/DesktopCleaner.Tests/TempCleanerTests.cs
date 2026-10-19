@@ -84,4 +84,59 @@ public sealed class TempCleanerTests : IDisposable
         Assert.True(File.Exists(a));
         Assert.Equal(0, result.Deleted);
     }
+
+    private string MakeDir(string rel, int ageDays)
+    {
+        var p = Path.Combine(_root, rel);
+        Directory.CreateDirectory(p);
+        Directory.SetLastWriteTimeUtc(p, DateTime.UtcNow.AddDays(-ageDays));
+        return p;
+    }
+
+    [Fact]
+    public async Task Old_empty_folders_are_listed_and_new_ones_are_kept_until_Everything_is_chosen()
+    {
+        MakeDir("old-empty", 10); MakeDir("new-empty", 0); MakeDir("nested-empty/a/b", 10);
+        Directory.SetLastWriteTimeUtc(Path.Combine(_root, "nested-empty"), DateTime.UtcNow.AddDays(-10));
+        Make("has-files/x.dat", 10);
+        var week = await Cleaner().ScanAsync(7);
+        Assert.Equal(["nested-empty", "old-empty"], week.Entries.Where(e => e.EmptyFolder).Select(e => e.Name).Order());
+        Assert.Equal(2, week.EmptyFolders);
+        Assert.Equal(3, week.ItemCount);   // one file + two empty folders
+        var all = await Cleaner().ScanAsync(0);
+        Assert.Contains(all.Entries, e => e.Name == "new-empty" && e.EmptyFolder);
+    }
+
+    [Fact]
+    public async Task Folder_with_a_file_anywhere_inside_is_not_called_empty()
+    {
+        MakeDir("tree", 10); Make("tree/sub/deep/new.dat", 0);   // the only file is new, so it is not a delete candidate either
+        var scan = await Cleaner().ScanAsync(7);
+        Assert.DoesNotContain(scan.Entries, e => e.EmptyFolder);
+    }
+
+    [Fact]
+    public async Task Clearing_removes_empty_folders_reports_progress_and_skips_one_that_got_a_file()
+    {
+        var gone = MakeDir("gone-empty", 10); var refilled = MakeDir("refilled", 10);
+        Make("old.dat", 10);
+        var cleaner = Cleaner();
+        var scan = await cleaner.ScanAsync(7);
+        File.WriteAllBytes(Path.Combine(refilled, "late.dat"), new byte[3]);   // a program started using it after the scan
+        var rec = new Recorder();
+        var res = await cleaner.ClearAsync(scan.Entries, 7, default, rec);
+        Assert.False(Directory.Exists(gone));
+        Assert.True(File.Exists(Path.Combine(refilled, "late.dat")));
+        Assert.Equal(1, res.LeftAlone);
+        Assert.Equal(3, rec.Reports[^1].Total);                      // 1 file + 2 folders on one bar
+        Assert.Equal(3, rec.Reports[^1].Done);
+    }
+
+    [Fact]
+    public async Task Files_newer_than_the_limit_are_counted_so_the_UI_can_say_why_they_were_skipped()
+    {
+        Make("a.dat", 10); Make("b.dat", 0); Make("c.dat", 1);
+        var scan = await Cleaner().ScanAsync(7);
+        Assert.Equal(2, scan.KeptNewer);
+    }
 }

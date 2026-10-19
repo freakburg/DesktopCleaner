@@ -105,7 +105,7 @@ public partial class MainWindow
             _od = found.Select(f => new OneDriveVm { File = f }).ToList();
             OdList.ItemsSource = _od;
             OdTotal.Text = _od.Count == 0 ? "" : $"{Format.Bytes(_od.Sum(f => f.File.Size))} could be freed";
-            OdStatus.Text = _od.Count == 0 ? "Nothing to free up. Your OneDrive files are already online-only or pinned." : "Tick the files to set to online-only. They stay in OneDrive.";
+            OdStatus.Text = _od.Count == 0 ? "Nothing to free up. Your OneDrive files are already online-only or pinned." : "Select the files to set to online-only. They stay in OneDrive.";
             OdFreeBtn.IsEnabled = _od.Count > 0;
         }
         finally { OdScanBtn.IsEnabled = true; OdBar.IsIndeterminate = false; }
@@ -114,7 +114,7 @@ public partial class MainWindow
     private async void OdFree_Click(object s, RoutedEventArgs e)
     {
         var chosen = _od.Where(f => f.Remove).ToList();
-        if (chosen.Count == 0) { OdStatus.Text = "Tick at least one file first."; return; }
+        if (chosen.Count == 0) { OdStatus.Text = "Select at least one file first."; return; }
         if (!ConfirmDialog.Ask(this, chosen.Count == 1 ? "Free up space from this file?" : $"Free up space from {chosen.Count} files?", chosen.Count, chosen.Sum(c => c.File.Size),
                 chosen.Select(c => c.File.Path).ToList(), ConfirmKind.OnlineOnly, "Free up space")) return;
         OdFreeBtn.IsEnabled = OdScanBtn.IsEnabled = false;
@@ -131,5 +131,6 @@ public partial class MainWindow
                         (res.Count - done.Count > 0 ? $" {res.Count - done.Count} were left alone." : "");
     }
 }
+
 
 

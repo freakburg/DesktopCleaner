@@ -9,6 +9,8 @@ public sealed record RuleReport(
     IReadOnlyList<string> Skipped, IReadOnlyList<DeleteOutcome> Outcomes)
 {
     public long RecoverableBytes => Candidates.Sum(c => c.Size);
+    /// <summary>Files left out only because they are newer than the age limit (they may still be in use).</summary>
+    public int KeptNewer { get; init; }
     public long FreedBytes => Outcomes.Where(o => o.Succeeded).Sum(o => o.Bytes);
 }
 
@@ -27,6 +29,7 @@ public sealed class CleanupEngine(ActivityLog? log = null, Action<string>? recyc
     {
         var skipped = new List<string>();
         var found = new List<CleanupCandidate>();
+        int keptNewer = 0;
         var cutoff = _now().AddDays(-rule.OlderThanDays);
         var exts = rule.Extensions.Select(e => e.StartsWith('.') ? e : "." + e).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -39,7 +42,8 @@ public sealed class CleanupEngine(ActivityLog? log = null, Action<string>? recyc
                 ct.ThrowIfCancellationRequested();
                 try
                 {
-                    if (CloudFiles.IsCloudOnly(fi.Attributes) || fi.LastWriteTimeUtc >= cutoff) continue;
+                    if (CloudFiles.IsCloudOnly(fi.Attributes)) continue;
+                    if (fi.LastWriteTimeUtc >= cutoff) { keptNewer++; continue; }
                     if (exts.Count > 0 && !exts.Contains(fi.Extension)) continue;
                     // Opening every file just to test for locks is slow on huge cache trees (and antivirus scans each open),
                     // so permanent-delete mode finds locked files when it actually tries to delete them.
@@ -52,7 +56,7 @@ public sealed class CleanupEngine(ActivityLog? log = null, Action<string>? recyc
                 }
             }
         }
-        return new RuleReport(rule, found, skipped, []);
+        return new RuleReport(rule, found, skipped, []) { KeptNewer = keptNewer };
     }
 
     /// <summary>Applies the rule: re-checks each file right before sending it to the Recycle Bin.</summary>
@@ -123,6 +127,10 @@ public sealed class CleanupEngine(ActivityLog? log = null, Action<string>? recyc
         catch (UnauthorizedAccessException) { return true; }
     }
 }
+
+
+
+
 
 
 

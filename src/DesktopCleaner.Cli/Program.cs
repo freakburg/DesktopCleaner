@@ -1,4 +1,5 @@
 ﻿using DesktopCleaner.Core.Caches;
+using DesktopCleaner.Core.Videos;
 using DesktopCleaner.Core.Cloud;
 using DesktopCleaner.Core;
 using DesktopCleaner.Core.Apps;
@@ -20,6 +21,7 @@ if (args.Length == 0 || args[0] is "-h" or "--help")
           dcleaner cleanup [--apply] [--report]     dry run by default; --apply sends matches to the Recycle Bin
           dcleaner downloads [folder] [--days 30] [--large-mb 500] [--remove]
                                                     flag old installers/archives and large files; --remove asks per file
+          dcleaner videos [folder] [--all-drives] [--min-mb N] [--type .mp4]   list video files, biggest first
           dcleaner temp [--days 7] [--apply]        temp-folder files older than N days (0 = everything); dry run unless --apply (deleted for good)
           dcleaner caches [--apply]                 browser/app caches; dry run by default, --apply clears them (cannot be undone, they rebuild themselves)
           dcleaner photos <folder> [--strict]       find similar photos (resized/re-saved copies)
@@ -43,6 +45,7 @@ if (args[0] == "storage") return await RunStorage(args);
 if (args[0] == "empty") return await RunEmpty(args);
 if (args[0] == "caches") return await RunCaches(args);
 if (args[0] == "temp") return await RunTemp(args);
+if (args[0] == "videos") return await RunVideos(args);
 if (args[0] == "photos") return await RunPhotos(args);
 if (args[0] == "history") return RunHistory();
 if (args[0] == "onedrive") return await RunOneDrive(args);
@@ -271,11 +274,38 @@ static async Task<int> RunTemp(string[] args)
     var cleaner = new TempCleaner(new ActivityLog());
     var scan = await cleaner.ScanAsync(days);
     Console.WriteLine($"Temp folder: {scan.Root}");
-    foreach (var e in scan.Entries.Take(15)) Console.WriteLine($"{ReportWriter.Bytes(e.Bytes),10}  {e.Name}{(e.IsFolder ? "  (folder)" : "")}  ({e.FileCount} files)");
+    foreach (var e in scan.Entries.Take(15))
+        Console.WriteLine(e.EmptyFolder ? $"{"empty",10}  {e.Name}  (empty folder)" : $"{ReportWriter.Bytes(e.Bytes),10}  {e.Name}{(e.IsFolder ? "  (folder)" : "")}  ({e.FileCount} files)");
     if (scan.Entries.Count > 15) Console.WriteLine($"  ... and {scan.Entries.Count - 15} more items");
-    Console.WriteLine($"\n{scan.FileCount} files older than {days} days, {ReportWriter.Bytes(scan.TotalBytes)}.");
+    Console.WriteLine($"\n{scan.FileCount} files and {scan.EmptyFolders} empty folders older than {days} days, {ReportWriter.Bytes(scan.TotalBytes)}.");
+    if (scan.KeptNewer > 0) Console.WriteLine($"{scan.KeptNewer} newer files are left alone (use --days 0 to include them).");
     if (!args.Contains("--apply")) { Console.WriteLine("Dry run. Re-run with --apply to delete them for good (files in use are skipped)."); return 0; }
     var result = await cleaner.ClearAsync(scan.Entries, days);
-    Console.WriteLine($"Deleted {result.Deleted} files, freed {ReportWriter.Bytes(result.FreedBytes)}. {result.LeftAlone} left alone (in use or changed).");
+    Console.WriteLine($"Removed {result.Deleted} items, freed {ReportWriter.Bytes(result.FreedBytes)}. {result.LeftAlone} left alone (in use or changed).");
     return 0;
 }
+
+static async Task<int> RunVideos(string[] args)
+{
+    long minMb = 0; string? type = null, folder = null; bool all = args.Contains("--all-drives");
+    for (int i = 1; i < args.Length; i++)
+    {
+        if (args[i] == "--min-mb" && i + 1 < args.Length) minMb = long.Parse(args[++i]);
+        else if (args[i] == "--type" && i + 1 < args.Length) type = args[++i].ToLowerInvariant();
+        else if (!args[i].StartsWith("--")) folder = args[i];
+    }
+    var roots = all ? VideoLocations.AllDrives() : [folder ?? VideoLocations.UserFolder];
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    var scan = await new VideoFinder().ScanAsync(roots, all ? VideoLocations.SystemFolders() : null);
+    var videos = scan.Videos.Where(v => v.Size >= minMb * 1024 * 1024 && (type is null || v.Extension == (type.StartsWith('.') ? type : "." + type))).ToList();
+    Console.WriteLine($"Looked in {string.Join(", ", scan.Roots)} ({sw.Elapsed.TotalSeconds:F1}s)\n");
+    foreach (var v in videos.Take(25)) Console.WriteLine($"{ReportWriter.Bytes(v.Size),10}  {v.Extension,-6} {v.Path}");
+    if (videos.Count > 25) Console.WriteLine($"  ... and {videos.Count - 25} more");
+    Console.WriteLine($"\n{videos.Count} videos, {ReportWriter.Bytes(videos.Sum(v => v.Size))}.");
+    Console.WriteLine("By type: " + string.Join(", ", scan.ByExtension.Select(e => $"{e.Extension} {e.Count} ({ReportWriter.Bytes(e.Bytes)})")));
+    if (scan.CloudOnlySkipped > 0) Console.WriteLine($"{scan.CloudOnlySkipped} online-only OneDrive videos were left out (they use no space on this PC).");
+    return 0;
+}
+
+
+

@@ -42,7 +42,7 @@ public partial class MainWindow
             var found = await new EmptyFolderFinder().ScanAsync(EmFolder.Text);
             _empties = found.Select(f => new EmptyVm { Folder = f }).ToList();
             EmList.ItemsSource = _empties;
-            EmStatus.Text = found.Count == 0 ? "No empty folders here. Nice and tidy." : $"{found.Count} empty folders found. Nothing is ticked yet.";
+            EmStatus.Text = found.Count == 0 ? "No empty folders here. Nice and tidy." : $"{found.Count} empty folders found. Nothing is selected yet.";
             EmDeleteBtn.IsEnabled = EmAllBtn.IsEnabled = found.Count > 0;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { EmStatus.Text = ex.Message; }
@@ -52,7 +52,7 @@ public partial class MainWindow
     private async void EmDelete_Click(object s, RoutedEventArgs e)
     {
         var chosen = _empties.Where(v => v.Remove).ToList();
-        if (chosen.Count == 0) { EmStatus.Text = "Nothing is ticked."; return; }
+        if (chosen.Count == 0) { EmStatus.Text = "Nothing is selected."; return; }
         if (!ConfirmDialog.Ask(this, chosen.Count == 1 ? "Delete this empty folder?" : $"Delete {chosen.Count} empty folders?", chosen.Count, 0, chosen.Select(c => c.Path).ToList(), ConfirmKind.Recycle, "Delete folders")) return;
         EmScanBtn.IsEnabled = EmDeleteBtn.IsEnabled = EmAllBtn.IsEnabled = false;
         var bar = new DeleteBar(EmBar, EmStatus, "Deleting", chosen.Count);
@@ -67,6 +67,7 @@ public partial class MainWindow
         EmStatus.Text = $"Removed {gone.Count} folders. {res.Count - gone.Count} skipped (no longer empty or protected).";
     }
 }
+
 
 
 
