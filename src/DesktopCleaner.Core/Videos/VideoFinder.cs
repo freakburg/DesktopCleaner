@@ -123,7 +123,7 @@ public sealed class VideoFinder
 /// </summary>
 public sealed class VideoRemover(ActivityLog? log = null, Action<string>? recycle = null)
 {
-    private readonly Action<string> _recycle = recycle ?? RecycleBin.Send;
+    private readonly Action<string> _recycle = recycle ?? FileDisposal.Send;
 
     public IReadOnlyList<DeleteOutcome> Remove(IEnumerable<VideoFile> chosen, IProgress<DeleteProgress>? progress = null, CancellationToken ct = default)
     {
@@ -157,4 +157,5 @@ public sealed class VideoRemover(ActivityLog? log = null, Action<string>? recycl
         }
     }
 }
+
 

@@ -66,8 +66,11 @@ public sealed class HistoryVm
     public string SizeText => Entry.Bytes > 0 ? Format.Bytes(Entry.Bytes) : "";
     public string What => Entry.Status switch
     {
-        DeleteStatus.Recycled => "In the Recycle Bin (can be put back)",
+        DeleteStatus.Recycled => FileDisposal.Net.FindByOriginalPath(Entry.Path) is { } held
+            ? $"In the safety net ({held.DaysLeft(DateTime.UtcNow)} days left)" : "In the Recycle Bin (can be put back)",
         DeleteStatus.Deleted => "Cleared for good",
+        DeleteStatus.Linked => "Replaced with a link (same file, no extra space)",
+        DeleteStatus.Archived => "Moved to another drive (shortcut left; can be brought back)",
         DeleteStatus.FreedFromPc => "Online-only now (still in OneDrive)",
         DeleteStatus.SkippedChanged => "Skipped: file had changed",
         DeleteStatus.SkippedMissing => "Skipped: already gone",
@@ -241,7 +244,7 @@ public partial class MainWindow
             };
             return;
         }
-        var res = await RecycleBinRestorer.RestoreAsync(vm.Path);
+        var res = await FileDisposal.RestoreAsync(vm.Path);
         HiStatus.Text = res.Status switch
         {
             RestoreStatus.Restored => $"Put back: {vm.Path}",
@@ -251,6 +254,10 @@ public partial class MainWindow
         };
     }
 }
+
+
+
+
 
 
 

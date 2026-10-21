@@ -50,6 +50,7 @@
             <StackPanel>
               <TextBlock x:Name="GrowthTitle" FontWeight="SemiBold" FontSize="14"/>
               <TextBlock x:Name="GrowthDetail" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+              <TextBlock x:Name="ForecastText" Margin="0,6,0,0" TextWrapping="Wrap" FontWeight="SemiBold"/>
               <Canvas x:Name="Spark" Width="360" Height="46" HorizontalAlignment="Left" Margin="0,8,0,0"/>
               <TextBlock x:Name="SparkNote" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
             </StackPanel>
@@ -138,17 +139,27 @@
       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <TextBlock Text="Find duplicate files" FontSize="22" FontWeight="SemiBold"/>
         <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
-                   Text="Finds files that are exact copies of each other, even if the names differ. In each group we select every copy except the first. Deselect any you want to keep. At least one copy of every file always stays."/>
+                   Text="Finds files that are exact copies of each other, even if the names differ. Pick which copy to keep in each group and we select all the others. Deselect any you want to keep. At least one copy of every file always stays. To free the space without deleting anything, you can replace copies with links instead."/>
         <DockPanel>
           <Button x:Name="ScanBtn" Content="Find duplicates" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="Scan_Click"/>
           <Button x:Name="CancelBtn" Content="Stop" Padding="14,6" Margin="8,0,0,0" DockPanel.Dock="Left" IsEnabled="False" Click="Cancel_Click"/>
           <Button x:Name="BrowseBtn" Content="Choose folder..." Padding="12,6" Margin="8,0,0,0" DockPanel.Dock="Left" Click="Browse_Click"/>
           <TextBlock x:Name="FolderBox" Margin="14,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis" Text="No folder chosen yet"/>
         </DockPanel>
+        <DockPanel Margin="0,10,0,0">
+          <TextBlock Text="Which copy to keep:" VerticalAlignment="Center" Margin="0,0,8,0" DockPanel.Dock="Left"/>
+          <ComboBox x:Name="KeepRuleBox" Width="300" DockPanel.Dock="Left" HorizontalAlignment="Left" SelectedIndex="0" SelectionChanged="KeepRule_Changed">
+            <ComboBoxItem Content="The oldest copy (the original)"/><ComboBoxItem Content="The newest copy"/>
+            <ComboBoxItem Content="The one with the shortest path"/><ComboBoxItem Content="The one in a folder I choose..."/>
+          </ComboBox>
+          <TextBlock x:Name="KeepFolderText" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+        </DockPanel>
       </StackPanel>
       <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
         <DockPanel Margin="0,6,0,0">
           <Button x:Name="DeleteBtn" Content="Delete selected copies" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="Delete_Click"/>
+          <Button x:Name="LinkBtn" Content="Replace with links instead" Padding="14,6" Margin="0,0,8,0" DockPanel.Dock="Right" IsEnabled="False" Click="Link_Click"
+                  ToolTip="Keeps every file where it is but makes the selected ones share the kept copy's data, so the space is freed without deleting anything. Same drive only."/>
           <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Text="Choose a folder, then press Find duplicates."/>
         </DockPanel>
       </StackPanel>
@@ -270,6 +281,8 @@
       <ProgressBar x:Name="VdBar" DockPanel.Dock="Top" Height="6" Margin="0,0,0,8"/>
       <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
         <Button x:Name="VdDeleteBtn" Content="Delete selected videos" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="VdDelete_Click"/>
+        <Button x:Name="VdArchiveBtn" Content="Move to another drive..." Padding="12,6" Margin="0,0,8,0" DockPanel.Dock="Right" IsEnabled="False" Click="VdArchive_Click"
+                ToolTip="Moves the selected videos to a folder on another drive and leaves a shortcut where each one was, so they still open. Bring them back any time from the History tab."/>
         <Button x:Name="VdShowBtn" Content="Show in folder" Padding="12,6" Margin="0,0,8,0" DockPanel.Dock="Right" IsEnabled="False" Click="VdShow_Click"/>
         <Button x:Name="VdPlayBtn" Content="Play" Padding="12,6" Margin="0,0,8,0" DockPanel.Dock="Right" IsEnabled="False" Click="VdPlay_Click"/>
         <Button x:Name="VdSelectBtn" Content="Select all shown" Padding="12,6" Margin="0,0,8,0" DockPanel.Dock="Right" IsEnabled="False" Click="VdSelect_Click"/>
@@ -284,6 +297,86 @@
             <GridViewColumn Header="Type" Width="60" DisplayMemberBinding="{Binding TypeText}"/>
             <GridViewColumn Header="Modified" Width="110" DisplayMemberBinding="{Binding ModifiedText}"/>
             <GridViewColumn Header="In folder" Width="400" DisplayMemberBinding="{Binding Folder}"/>
+          </GridView>
+        </ListView.View>
+      </ListView>
+    </DockPanel>
+  </TabItem>
+  <TabItem x:Name="GameTab" Header="Games" Tag="&#xE7FC;">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="Games taking up space" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Games are often the biggest things installed on a PC, and many sit untouched for years. This lists your Steam and Epic Games installs with their size and when you last played, so you can spot the big ones you have dropped. Uninstalling is done by the launcher itself, so nothing is deleted behind its back."/>
+        <DockPanel>
+          <Button x:Name="GmScanBtn" Content="Find my games" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="GmScan_Click"/>
+          <TextBlock x:Name="GmSummary" Margin="16,0,0,0" VerticalAlignment="Center" FontSize="16" FontWeight="SemiBold" Foreground="#C0392B"/>
+        </DockPanel>
+        <WrapPanel Margin="0,10,0,0" x:Name="GmFilters" IsEnabled="False">
+          <TextBlock Text="Not played in:" VerticalAlignment="Center" Margin="0,0,8,4"/>
+          <ComboBox x:Name="GmAge" Width="170" Margin="0,0,16,4" SelectedIndex="0" SelectionChanged="GmFilter_Changed">
+            <ComboBoxItem Content="Any time"/><ComboBoxItem Content="1 month or more"/><ComboBoxItem Content="3 months or more"/>
+            <ComboBoxItem Content="6 months or more"/><ComboBoxItem Content="1 year or more"/>
+          </ComboBox>
+          <TextBlock Text="Sort:" VerticalAlignment="Center" Margin="0,0,8,4"/>
+          <ComboBox x:Name="GmSort" Width="200" Margin="0,0,16,4" SelectedIndex="0" SelectionChanged="GmFilter_Changed">
+            <ComboBoxItem Content="Biggest first"/><ComboBoxItem Content="Not played the longest"/><ComboBoxItem Content="Name (A to Z)"/>
+          </ComboBox>
+          <CheckBox x:Name="GmTools" Content="Also show Steam tools (runtimes)" VerticalAlignment="Center" Margin="0,0,0,4" Checked="GmFilter_Changed" Unchecked="GmFilter_Changed"/>
+        </WrapPanel>
+      </StackPanel>
+      <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+        <Button x:Name="GmUninstallBtn" Content="Uninstall..." Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="GmUninstall_Click"/>
+        <Button x:Name="GmShowBtn" Content="Show in folder" Padding="12,6" Margin="0,0,8,0" DockPanel.Dock="Right" IsEnabled="False" Click="GmShow_Click"/>
+        <TextBlock x:Name="GmStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis" Text="Press Find my games."/>
+      </DockPanel>
+      <ListView x:Name="GmList" BorderBrush="{DynamicResource CardBorderBrush}" SelectionMode="Single" SelectionChanged="GmList_Changed">
+        <ListView.View>
+          <GridView>
+            <GridViewColumn Header="Game" Width="300" DisplayMemberBinding="{Binding Name}"/>
+            <GridViewColumn Header="From" Width="70" DisplayMemberBinding="{Binding LauncherText}"/>
+            <GridViewColumn Header="Size" Width="90" DisplayMemberBinding="{Binding SizeText}"/>
+            <GridViewColumn Header="Last played" Width="170" DisplayMemberBinding="{Binding PlayedText}"/>
+            <GridViewColumn Header="Where" Width="380" DisplayMemberBinding="{Binding InstallPath}"/>
+          </GridView>
+        </ListView.View>
+      </ListView>
+    </DockPanel>
+  </TabItem>
+  <TabItem x:Name="ProjTab" Header="Dev projects" Tag="&#xE943;">
+    <DockPanel Margin="14">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <TextBlock Text="Clean up old projects" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,10" TextWrapping="Wrap"
+                   Text="Software projects leave big folders behind that can be rebuilt from the source code: node_modules, bin and obj, target, Python environments and Unity's Library. This finds them in projects you have not touched for a while. Your own code is never listed, and projects you used recently are skipped. These folders are deleted for good, since they come back on their own when you next build."/>
+        <DockPanel>
+          <Button x:Name="PjScanBtn" Content="Find old projects" FontWeight="SemiBold" Padding="20,6" DockPanel.Dock="Left" Click="PjScan_Click"/>
+          <Button x:Name="PjStopBtn" Content="Stop" Padding="14,6" Margin="8,0,0,0" DockPanel.Dock="Left" IsEnabled="False" Click="PjStop_Click"/>
+          <TextBlock Text="Not used in:" VerticalAlignment="Center" Margin="18,0,8,0" DockPanel.Dock="Left"/>
+          <ComboBox x:Name="PjAge" Width="170" DockPanel.Dock="Left" SelectedIndex="1">
+            <ComboBoxItem Content="1 month or more"/><ComboBoxItem Content="3 months or more"/>
+            <ComboBoxItem Content="6 months or more"/><ComboBoxItem Content="1 year or more"/>
+          </ComboBox>
+          <Button Content="Choose folder..." Padding="12,6" Margin="12,0,0,0" DockPanel.Dock="Left" Click="PjBrowse_Click"/>
+          <TextBlock x:Name="PjFolder" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+        </DockPanel>
+        <TextBlock x:Name="PjTotal" Margin="0,8,0,0" FontSize="16" FontWeight="SemiBold" Foreground="#C0392B"/>
+      </StackPanel>
+      <ProgressBar x:Name="PjBar" DockPanel.Dock="Top" Height="6" Margin="0,0,0,8"/>
+      <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+        <Button x:Name="PjDeleteBtn" Content="Delete selected folders" Padding="14,6" DockPanel.Dock="Right" IsEnabled="False" Click="PjDelete_Click"/>
+        <Button x:Name="PjAllBtn" Content="Select all" Padding="12,6" Margin="0,0,8,0" DockPanel.Dock="Right" IsEnabled="False" Click="PjAll_Click"/>
+        <TextBlock x:Name="PjStatus" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis" Text="Press Find old projects."/>
+      </DockPanel>
+      <ListView x:Name="PjList" BorderBrush="{DynamicResource CardBorderBrush}">
+        <ListView.View>
+          <GridView>
+            <GridViewColumn Width="40"><GridViewColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Remove}"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
+            <GridViewColumn Header="Project" Width="200" DisplayMemberBinding="{Binding ProjectName}"/>
+            <GridViewColumn Header="What it is" Width="160" DisplayMemberBinding="{Binding KindText}"/>
+            <GridViewColumn Header="Size" Width="80" DisplayMemberBinding="{Binding SizeText}"/>
+            <GridViewColumn Header="Last used" Width="110" DisplayMemberBinding="{Binding LastUsedText}"/>
+            <GridViewColumn Header="How it comes back" Width="330"><GridViewColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Rebuild}" ToolTip="{Binding FolderPath}" TextTrimming="CharacterEllipsis"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
           </GridView>
         </ListView.View>
       </ListView>
@@ -314,11 +407,12 @@
         <ListView.View>
           <GridView>
             <GridViewColumn Width="40"><GridViewColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Remove}"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
-            <GridViewColumn Header="File" Width="320" DisplayMemberBinding="{Binding Name}"/>
+            <GridViewColumn Header="File" Width="280" DisplayMemberBinding="{Binding Name}"/>
             <GridViewColumn Header="Size" Width="80" DisplayMemberBinding="{Binding SizeText}"/>
-            <GridViewColumn Header="Why we flagged it" Width="190" DisplayMemberBinding="{Binding Why}"/>
+            <GridViewColumn Header="Why we flagged it" Width="170" DisplayMemberBinding="{Binding Why}"/>
             <GridViewColumn Header="Downloaded" Width="110" DisplayMemberBinding="{Binding AgeText}"/>
-            <GridViewColumn Header="In folder" Width="260" DisplayMemberBinding="{Binding Folder}"/>
+            <GridViewColumn Header="Came from" Width="200"><GridViewColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding OriginText}" ToolTip="{Binding OriginDetails}" TextTrimming="CharacterEllipsis"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
+            <GridViewColumn Header="In folder" Width="220" DisplayMemberBinding="{Binding Folder}"/>
           </GridView>
         </ListView.View>
       </ListView>
@@ -537,12 +631,34 @@
         <TextBox x:Name="SetLowGb" Width="44" Margin="8,0" HorizontalContentAlignment="Center" LostFocus="SetLowDisk_Changed"/>
         <TextBlock Text="GB is free" VerticalAlignment="Center"/>
       </StackPanel>
+      <TextBlock Margin="0,14,0,4" FontWeight="SemiBold" Text="Safety net"/>
+      <CheckBox x:Name="SetSafety" Content="Keep deleted files in a safety net instead of the Recycle Bin" Checked="SetSafety_Changed" Unchecked="SetSafety_Changed"/>
+      <StackPanel Orientation="Horizontal" Margin="22,6,0,0">
+        <TextBlock Text="Keep them for" VerticalAlignment="Center"/>
+        <TextBox x:Name="SetSafetyDays" Width="44" Margin="8,0" HorizontalContentAlignment="Center" LostFocus="SetSafety_Changed"/>
+        <TextBlock Text="days, then delete them for good" VerticalAlignment="Center"/>
+      </StackPanel>
+      <TextBlock Margin="22,6,0,0" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" MaxWidth="640"
+                 Text="Deleted files wait in a hidden folder on their own drive, so restoring is one click on the History tab. The catch: they keep using disk space until the time is up."/>
+      <StackPanel Orientation="Horizontal" Margin="22,8,0,0">
+        <TextBlock x:Name="SetHeldInfo" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+        <Button x:Name="SetHeldPurge" Content="Delete held items now" Padding="12,4" Margin="14,0,0,0" Click="SetHeldPurge_Click"/>
+      </StackPanel>
       <TextBlock Margin="0,14,0,4" FontWeight="SemiBold" Text="Appearance"/>
       <TextBlock Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Text="Desktop Cleaner follows your Windows light or dark setting automatically."/>
       <TextBlock x:Name="SetStatus" Margin="0,16,0,0" Foreground="{DynamicResource MutedBrush}"/>
     </StackPanel>
   </TabItem>  </TabControl>
 </Window>
+
+
+
+
+
+
+
+
+
 
 
 

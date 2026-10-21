@@ -18,7 +18,7 @@ public sealed record RuleReport(
 /// <param name="permanent">Delete outright instead of using the Recycle Bin. Only meant for regenerable caches, where recycling would just move the space somewhere else.</param>
 public sealed class CleanupEngine(ActivityLog? log = null, Action<string>? recycle = null, Func<DateTime>? clock = null, bool permanent = false)
 {
-    private readonly Action<string> _recycle = recycle ?? (permanent ? File.Delete : RecycleBin.Send);
+    private readonly Action<string> _recycle = recycle ?? (permanent ? File.Delete : FileDisposal.Send);
     private readonly Func<DateTime> _now = clock ?? (() => DateTime.UtcNow);
 
     /// <summary>Dry run: list what the rule would remove. Never modifies anything.</summary>
@@ -127,6 +127,7 @@ public sealed class CleanupEngine(ActivityLog? log = null, Action<string>? recyc
         catch (UnauthorizedAccessException) { return true; }
     }
 }
+
 
 
 

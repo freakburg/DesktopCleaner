@@ -2,6 +2,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using DesktopCleaner.Core.Archiving;
 using DesktopCleaner.Core.Deletion;
 using DesktopCleaner.Core.Videos;
 using Microsoft.Win32;
@@ -65,7 +66,7 @@ public partial class MainWindow
         var excluded = VdScope.SelectedIndex == 1 ? VideoLocations.SystemFolders() : null;
 
         _vdCts = new CancellationTokenSource();
-        VdScanBtn.IsEnabled = VdScope.IsEnabled = VdDeleteBtn.IsEnabled = VdSelectBtn.IsEnabled = false; VdStopBtn.IsEnabled = true; VdFilters.IsEnabled = false;
+        VdScanBtn.IsEnabled = VdScope.IsEnabled = VdDeleteBtn.IsEnabled = VdSelectBtn.IsEnabled = VdArchiveBtn.IsEnabled = false; VdStopBtn.IsEnabled = true; VdFilters.IsEnabled = false;
         VdBar.IsIndeterminate = true; VdList.ItemsSource = null;
         var progress = new Progress<VideoProgress>(p =>
             VdStatus.Text = $"Looking... {p.FilesSeen:N0} files checked, {p.VideosFound:N0} videos found ({Format.Bytes(p.VideoBytes)}). Press Stop any time to see what has been found.");
@@ -119,7 +120,7 @@ public partial class MainWindow
         foreach (var hidden in _videosAll.Except(_videosShown)) hidden.Remove = false;   // never delete something the filter is hiding
         VdList.ItemsSource = _videosShown;
         VdSummary.Text = _videosAll.Count == 0 ? "" : $"{_videosShown.Count:N0} shown, {Format.Bytes(_videosShown.Sum(v => v.File.Size))}";
-        VdSelectBtn.IsEnabled = VdDeleteBtn.IsEnabled = _videosShown.Count > 0;
+        VdSelectBtn.IsEnabled = VdDeleteBtn.IsEnabled = VdArchiveBtn.IsEnabled = _videosShown.Count > 0;
     }
 
     private void VdSelect_Click(object s, RoutedEventArgs e)
@@ -144,6 +145,40 @@ public partial class MainWindow
             Process.Start(new ProcessStartInfo("explorer.exe") { ArgumentList = { $"/select,{v.File.Path}" }, UseShellExecute = true });
     }
 
+    private async void VdArchive_Click(object s, RoutedEventArgs e)
+    {
+        var chosen = _videosShown.Where(v => v.Remove).ToList();
+        if (chosen.Count == 0) { VdStatus.Text = "Select at least one video first."; return; }
+        var dlg = new OpenFolderDialog { Title = "Choose a folder on ANOTHER drive to move the videos to" };
+        if (dlg.ShowDialog() != true) return;
+        var dest = dlg.FolderName;
+        var destRoot = Path.GetPathRoot(Path.GetFullPath(dest));
+        var movable = chosen.Where(c => !string.Equals(Path.GetPathRoot(c.File.Path), destRoot, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (movable.Count == 0) { VdStatus.Text = "Those videos are already on that drive. Choose a folder on a different drive to free up space."; return; }
+        if (!ConfirmDialog.Ask(this, movable.Count == 1 ? "Move this video to another drive?" : $"Move {movable.Count} videos to {destRoot}?", movable.Count, movable.Sum(c => c.File.Size),
+                movable.Select(c => c.File.Path).ToList(), ConfirmKind.Archive, "Move videos")) return;
+
+        VdScanBtn.IsEnabled = VdDeleteBtn.IsEnabled = VdSelectBtn.IsEnabled = VdArchiveBtn.IsEnabled = false;
+        long total = movable.Sum(c => c.File.Size);
+        VdBar.IsIndeterminate = false; VdBar.Minimum = 0; VdBar.Maximum = Math.Max(1, total); VdBar.Value = 0;
+        bool closed = false;
+        var progress = new Progress<ArchiveProgress>(p =>
+        {
+            if (closed) return;
+            VdBar.Value = p.BytesDone;
+            VdStatus.Text = $"Moving {p.FileNumber} of {p.FileCount}: {Path.GetFileName(p.Current)}  ({Format.Bytes(p.BytesDone)} of {Format.Bytes(p.BytesTotal)})";
+        });
+        var files = movable.Select(c => (c.File.Path, c.File.Size, c.File.LastWriteUtc)).ToList();
+        var res = await Task.Run(() => new Archiver(null, new ActivityLog()).ArchiveAsync(files, dest, progress));
+        closed = true; VdBar.Value = 0; VdScanBtn.IsEnabled = true;
+        var moved = res.Where(r => r.Succeeded).Select(r => r.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _videosAll = _videosAll.Where(v => !moved.Contains(v.File.Path)).ToList();
+        ApplyVideoFilter();
+        var failed = res.FirstOrDefault(r => !r.Succeeded);
+        VdStatus.Text = $"Moved {Format.Bytes(res.Sum(r => r.Bytes))} to {destRoot}. Shortcuts were left where the videos were. Bring them back from the History tab." +
+                        (failed is not null ? $" {res.Count(r => !r.Succeeded)} not moved: {failed.Detail}" : "");
+    }
+
     private async void VdDelete_Click(object s, RoutedEventArgs e)
     {
         var chosen = _videosShown.Where(v => v.Remove).ToList();
@@ -163,4 +198,8 @@ public partial class MainWindow
         VdStatus.Text = $"Freed {Format.Bytes(res.Sum(r => r.Bytes))}." + (res.Any(r => !r.Succeeded) ? $" {res.Count(r => !r.Succeeded)} left alone because they changed or were in use." : "");
     }
 }
+
+
+
+
 

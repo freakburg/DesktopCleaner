@@ -239,6 +239,7 @@ public partial class MainWindow
             var all = history.Append(snap).ToList();
 
             GrowthBox.Visibility = Visibility.Visible;
+            ShowForecast(root);
             var cmp = SnapshotStore.Compare(previous, snap);
             if (cmp is null)
             {
@@ -260,6 +261,35 @@ public partial class MainWindow
             DrawSparkline(all);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { GrowthBox.Visibility = Visibility.Collapsed; }
+    }
+
+    /// <summary>"At this pace your drive will be full in about N weeks", from the free-space readings saved over time.</summary>
+    private void ShowForecast(string root)
+    {
+        try
+        {
+            var history = new DesktopCleaner.Core.History.DriveHistory();
+            var drives = new List<DesktopCleaner.Core.Settings.DiskStatus>();
+            if (DesktopCleaner.Core.Settings.DiskSpaceCheck.SystemDrive() is { } sys) drives.Add(sys);
+            try
+            {
+                var rd = new DriveInfo(System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(root))!);
+                if (rd.IsReady && !drives.Any(d => string.Equals(d.Drive, rd.Name, StringComparison.OrdinalIgnoreCase))) drives.Add(new(rd.Name, rd.AvailableFreeSpace, rd.TotalSize));
+            }
+            catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException) { }
+            var lines = new List<string>(); var soon = false;
+            foreach (var d in drives)
+            {
+                history.Record(d);
+                var f = DesktopCleaner.Core.History.DiskForecast.Estimate(history.Points(d.Drive), DateTime.UtcNow);
+                lines.Add($"{Format.Bytes(d.FreeBytes)} free on {d.Drive.TrimEnd('\\')}. {f.Message(d.Drive)}");
+                if (f is { Kind: DesktopCleaner.Core.History.ForecastKind.FillingUp, DaysToFull: < 60 }) soon = true;
+            }
+            ForecastText.Text = string.Join("\n", lines);
+            ForecastText.Foreground = soon ? Brush("#C0392B") : (Brush)FindResource("MutedBrush");
+            ForecastText.Visibility = lines.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { ForecastText.Visibility = Visibility.Collapsed; }
     }
 
     private void DrawSparkline(IReadOnlyList<SpaceSnapshot> points)
@@ -466,6 +496,8 @@ public partial class MainWindow
     }
 
 }
+
+
 
 
 

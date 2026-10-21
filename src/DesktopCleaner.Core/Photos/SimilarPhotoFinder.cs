@@ -150,7 +150,7 @@ public sealed class SimilarPhotoFinder
 /// <summary>Removes chosen photos from a group after re-checking they are unchanged, and never removes the last remaining copy.</summary>
 public sealed class PhotoRemover(ActivityLog? log = null, Action<string>? recycle = null)
 {
-    private readonly Action<string> _recycle = recycle ?? RecycleBin.Send;
+    private readonly Action<string> _recycle = recycle ?? FileDisposal.Send;
 
     public IReadOnlyList<DeleteOutcome> Remove(SimilarPhotoGroup group, IEnumerable<string> pathsToRemove, IProgress<DeleteProgress>? progress = null)
     {
@@ -186,6 +186,7 @@ public sealed class PhotoRemover(ActivityLog? log = null, Action<string>? recycl
         }
     }
 }
+
 
 
 

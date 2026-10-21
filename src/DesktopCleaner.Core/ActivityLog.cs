@@ -51,7 +51,10 @@ public sealed class ActivityLog(string? filePath = null)
 public sealed record ActivityEntry(DateTime TimeUtc, string Path, DeleteStatus Status, long Bytes, string? Detail)
 {
     /// <summary>Only items that went to the Recycle Bin can be put back.</summary>
-    public bool CanRestore => Status == DeleteStatus.Recycled;
-    public bool Succeeded => Status is DeleteStatus.Recycled or DeleteStatus.Deleted or DeleteStatus.FreedFromPc;
+    public bool CanRestore => Status is DeleteStatus.Recycled or DeleteStatus.Archived;
+    public bool Succeeded => Status is DeleteStatus.Recycled or DeleteStatus.Deleted or DeleteStatus.FreedFromPc or DeleteStatus.Linked or DeleteStatus.Archived;
 }
+
+
+
 

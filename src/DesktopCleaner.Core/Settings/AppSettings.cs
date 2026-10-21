@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace DesktopCleaner.Core.Settings;
 
@@ -10,6 +10,9 @@ public sealed record AppSettings
     public int LowDiskPercent { get; init; } = 15;
     /// <summary>...or below this many gigabytes, whichever comes first.</summary>
     public int LowDiskGigabytes { get; init; } = 15;
+    /// <summary>Keep deleted files in a hidden holding area for a while instead of the Recycle Bin.</summary>
+    public bool SafetyNet { get; init; } = false;
+    public int SafetyNetDays { get; init; } = 30;
 
     public static string DefaultPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DesktopCleaner", "settings.json");
@@ -50,3 +53,4 @@ public static class DiskSpaceCheck
     public static bool IsLow(DiskStatus s, AppSettings settings) =>
         settings.LowDiskAlert && (s.FreePercent < settings.LowDiskPercent || s.FreeBytes < settings.LowDiskGigabytes * 1024L * 1024 * 1024);
 }
+

@@ -2,7 +2,7 @@
 
 namespace DesktopCleaner.Core.Deletion;
 
-public enum DeleteStatus { Recycled, Deleted, FreedFromPc, SkippedChanged, SkippedMissing, SkippedProtected, SkippedLastCopy, Failed }
+public enum DeleteStatus { Recycled, Deleted, FreedFromPc, Linked, Archived, SkippedChanged, SkippedMissing, SkippedProtected, SkippedLastCopy, Failed }
 
 /// <summary>How far a removal has got, so the UI can show a progress bar. <paramref name="Current"/> is the file just handled.</summary>
 public sealed record DeleteProgress(int Done, int Total, string? Current);
@@ -10,7 +10,7 @@ public sealed record DeleteProgress(int Done, int Total, string? Current);
 public sealed record DeleteOutcome(string Path, DeleteStatus Status, long Bytes, string? Detail = null)
 {
     /// <summary>True when the file is gone, either to the Recycle Bin or (for regenerable caches) deleted outright.</summary>
-    public bool Succeeded => Status is DeleteStatus.Recycled or DeleteStatus.Deleted or DeleteStatus.FreedFromPc;
+    public bool Succeeded => Status is DeleteStatus.Recycled or DeleteStatus.Deleted or DeleteStatus.FreedFromPc or DeleteStatus.Linked or DeleteStatus.Archived;
 }
 
 /// <summary>
@@ -19,7 +19,7 @@ public sealed record DeleteOutcome(string Path, DeleteStatus Status, long Bytes,
 /// </summary>
 public sealed class DuplicateRemover(ActivityLog? log = null, Action<string>? recycle = null)
 {
-    private readonly Action<string> _recycle = recycle ?? RecycleBin.Send;
+    private readonly Action<string> _recycle = recycle ?? FileDisposal.Send;
 
     public async Task<IReadOnlyList<DeleteOutcome>> RemoveAsync(
         DuplicateGroup group, IEnumerable<string> pathsToRemove, CancellationToken ct = default, IProgress<DeleteProgress>? progress = null)
@@ -69,6 +69,11 @@ public sealed class DuplicateRemover(ActivityLog? log = null, Action<string>? re
         }
     }
 }
+
+
+
+
+
 
 
 

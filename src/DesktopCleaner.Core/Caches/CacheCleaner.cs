@@ -3,7 +3,7 @@ using DesktopCleaner.Core.Deletion;
 
 namespace DesktopCleaner.Core.Caches;
 
-public enum CacheGroup { Browsers, Apps, Developer, Windows }
+public enum CacheGroup { Browsers, Apps, Creator, Developer, Windows }
 
 /// <summary>A cache folder set that apps rebuild on their own. Folders are resolved on demand so missing apps are simply skipped.</summary>
 public sealed record CacheTarget(string Id, string Name, CacheGroup Group, string Description, Func<IEnumerable<string>> ResolveFolders)
@@ -43,6 +43,14 @@ public static class CacheCatalog
             () => ChromiumCacheDirs.Select(c => Path.Combine(Roaming, "discord", c))),
         new("steam-html", "Steam store cache", CacheGroup.Apps, "Pictures and pages from the Steam store and community.",
             () => [Path.Combine(Local, "Steam", "htmlcache")]),
+        new("capcut", "CapCut", CacheGroup.Creator, "Preview and effect caches. CapCut rebuilds them when you open a project, which can take a moment.",
+            () => [Path.Combine(Local, "CapCut", "User Data", "Cache")]),
+        new("premiere", "Adobe Premiere / After Effects media cache", CacheGroup.Creator, "Conformed audio, peak files and preview media. Adobe regenerates them the next time a project is opened.",
+            () => new[] { "Media Cache Files", "Media Cache", "Peak Files" }.Select(n => Path.Combine(Roaming, "Adobe", "Common", n))),
+        new("unity-cache", "Unity package cache", CacheGroup.Creator, "Downloaded editor packages. Unity downloads them again when a project needs them.",
+            () => [Path.Combine(Local, "Unity", "cache")]),
+        new("gradle", "Gradle build cache", CacheGroup.Developer, "Downloaded libraries for Android and Java builds. Gradle downloads them again on the next build, so you need an internet connection.",
+            () => [Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gradle", "caches")]),
         new("crashdumps", "App crash reports", CacheGroup.Windows, "Memory dumps apps left behind after crashing. Only useful for debugging.",
             () => [Path.Combine(Local, "CrashDumps")]),
         new("nuget", "NuGet packages cache", CacheGroup.Developer, "Downloaded .NET packages. They re-download the next time a project needs them.",
@@ -87,5 +95,7 @@ public sealed class CacheCleaner(ActivityLog? log = null, Action<string>? delete
     public async Task<RuleReport> ClearAsync(CacheTarget target, CancellationToken ct = default, IProgress<DeleteProgress>? progress = null) =>
         await new CleanupEngine(log, delete, permanent: true).RunAsync(CacheCatalog.RuleFor(target), ct, progress).ConfigureAwait(false);
 }
+
+
 
 

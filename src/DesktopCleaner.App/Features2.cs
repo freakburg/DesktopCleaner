@@ -40,6 +40,8 @@ public partial class MainWindow
         {
             var s = AppSettings.Load();
             SetLowDisk.IsChecked = s.LowDiskAlert; SetLowPct.Text = s.LowDiskPercent.ToString(); SetLowGb.Text = s.LowDiskGigabytes.ToString();
+            SetSafety.IsChecked = s.SafetyNet; SetSafetyDays.Text = s.SafetyNetDays.ToString();
+            RefreshHeldInfo();
             SetExplorer.IsChecked = new ExplorerMenu().IsEnabled;
         }
         finally { _settingsLoading = false; }
@@ -64,13 +66,43 @@ public partial class MainWindow
     {
         if (_settingsLoading) return;
         var cur = AppSettings.Load();
-        new AppSettings
+        (cur with
         {
             LowDiskAlert = SetLowDisk.IsChecked == true,
             LowDiskPercent = int.TryParse(SetLowPct.Text, out var p) && p is > 0 and < 100 ? p : cur.LowDiskPercent,
             LowDiskGigabytes = int.TryParse(SetLowGb.Text, out var g) && g is > 0 and < 100000 ? g : cur.LowDiskGigabytes,
-        }.Save();
+        }).Save();
         SetStatus.Text = "Saved.";
+    }
+
+    private void SetSafety_Changed(object s, RoutedEventArgs e)
+    {
+        if (_settingsLoading) return;
+        var cur = AppSettings.Load();
+        var next = cur with
+        {
+            SafetyNet = SetSafety.IsChecked == true,
+            SafetyNetDays = int.TryParse(SetSafetyDays.Text, out var d) && d is > 0 and <= 365 ? d : cur.SafetyNetDays,
+        };
+        next.Save();
+        FileDisposal.Configure(next);   // takes effect immediately
+        SetStatus.Text = next.SafetyNet ? $"Saved. Deleted files will wait {next.SafetyNetDays} days before they are gone for good." : "Saved. Deleted files go to the Recycle Bin.";
+    }
+
+    private void RefreshHeldInfo()
+    {
+        var held = FileDisposal.Net.List();
+        SetHeldInfo.Text = held.Count == 0 ? "Nothing is being held right now." : $"{held.Count:N0} items ({Format.Bytes(held.Sum(h => h.Bytes))}) are being held.";
+        SetHeldPurge.IsEnabled = held.Count > 0;
+    }
+
+    private async void SetHeldPurge_Click(object s, RoutedEventArgs e)
+    {
+        var held = FileDisposal.Net.List();
+        if (!ConfirmDialog.Ask(this, "Delete everything in the safety net?", held.Count, held.Sum(h => h.Bytes), held.Select(h => h.OriginalPath).ToList(), ConfirmKind.Permanent, "Delete for good")) return;
+        var r = await Task.Run(() => FileDisposal.Net.Purge(all: true));
+        RefreshHeldInfo();
+        SetStatus.Text = $"Deleted {r.Removed:N0} held items and freed {Format.Bytes(r.FreedBytes)}.";
     }
 
     // ---------- Installed apps ----------
@@ -131,6 +163,8 @@ public partial class MainWindow
                         (res.Count - done.Count > 0 ? $" {res.Count - done.Count} were left alone." : "");
     }
 }
+
+
 
 
 

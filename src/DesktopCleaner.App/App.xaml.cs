@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using DesktopCleaner.Core.Deletion;
 using DesktopCleaner.Core.Scheduling;
 using DesktopCleaner.Core.Settings;
 
@@ -12,8 +13,10 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        FileDisposal.Configure(AppSettings.Load());
         if (e.Args.Contains(ScheduledReportArg))
         {
+            try { FileDisposal.Net.Purge(); } catch { /* expiring old held files is best effort */ }
             // Headless run for Task Scheduler: write a dry-run report, never delete, show no window.
             try { await ReportScheduler.RunReportAsync(); } catch { /* nothing to show a user at 3am */ }
             try { await LowDiskNotice.ShowIfNeededAsync(); } catch { /* a missed notification is not worth a crash */ }
@@ -23,6 +26,11 @@ public partial class App : Application
         var ti = Array.IndexOf(e.Args, "--theme");
         bool? forced = ti >= 0 && ti + 1 < e.Args.Length ? e.Args[ti + 1].Equals("light", StringComparison.OrdinalIgnoreCase) : null;
         ScrollTuning.Install();
+        _ = Task.Run(() =>
+        {
+            try { FileDisposal.Net.Purge(); } catch { /* best effort */ }   // delete safety-net items past their date
+            try { if (DiskSpaceCheck.SystemDrive() is { } d) new DesktopCleaner.Core.History.DriveHistory().Record(d); } catch { /* best effort */ }
+        });
         Theme.Apply(this, forced);
         if (forced is null) Theme.Watch(this);
         var window = new MainWindow();
@@ -53,5 +61,9 @@ public static class LowDiskNotice
         await Task.Delay(TimeSpan.FromSeconds(16)); // keep the process alive long enough to be seen and clicked
     }
 }
+
+
+
+
 
 

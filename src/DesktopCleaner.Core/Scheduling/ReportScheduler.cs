@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using DesktopCleaner.Core.Cleanup;
@@ -78,7 +78,18 @@ public sealed class ReportScheduler(string? settingsPath = null, string? reports
         var reports = new List<RuleReport>();
         foreach (var rule in RuleStore.Load().Where(r => r.Enabled))
             reports.Add(await engine.PreviewAsync(rule, ct));
-        return ReportWriter.Save(ReportWriter.Render(reports, applied: false), reportsFolder);
+        return ReportWriter.Save(ReportWriter.Render(reports, applied: false) + DiskSection(), reportsFolder);
+    }
+
+    /// <summary>Free space on the system drive plus the "when will it fill up" estimate. Also records today's reading for next time.</summary>
+    public static string DiskSection()
+    {
+        var disk = DesktopCleaner.Core.Settings.DiskSpaceCheck.SystemDrive();
+        if (disk is null) return "";
+        var history = new DesktopCleaner.Core.History.DriveHistory();
+        history.Record(disk);
+        var forecast = DesktopCleaner.Core.History.DiskForecast.Estimate(history.Points(disk.Drive), DateTime.UtcNow);
+        return $"\n\n## Disk space\n- {disk.Drive.TrimEnd('\\')} has {ReportWriter.Bytes(disk.FreeBytes)} free of {ReportWriter.Bytes(disk.TotalBytes)} ({disk.FreePercent:F0}%)\n- {forecast.Message(disk.Drive)}\n";
     }
 
     private static int RunSchtasksProcess(IReadOnlyList<string> args)
@@ -91,3 +102,5 @@ public sealed class ReportScheduler(string? settingsPath = null, string? reports
         return p.ExitCode;
     }
 }
+
+

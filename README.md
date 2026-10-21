@@ -16,11 +16,13 @@ A command-line version (`dcleaner.exe`) is also on the release page.
 
 | Tab | What it does |
 |---|---|
-| **Home** | Scans a folder and shows what is using space: by file type, by folder (with a drill-down bar view and a treemap "map"), and the biggest files. Shows what grew since your last check and suggests what to clear up. Reports can be saved as a printable page or CSV. |
-| **Duplicate files** | Finds exact copies (size, then partial hash, then full SHA-256). You pick which copies to remove; one always stays. |
+| **Home** | Scans a folder and shows what is using space: by file type, by folder (with a drill-down bar view and a treemap "map"), and the biggest files. Shows what grew since your last check, **forecasts when your drive will fill up** from your free-space history, and suggests what to clear up. Reports can be saved as a printable page or CSV. |
+| **Duplicate files** | Finds exact copies (size, then partial hash, then full SHA-256). Choose a rule for which copy to keep (oldest, newest, shortest path, or one in a folder you pick), then delete the rest, or **replace them with NTFS hard links** to free the space without deleting anything. One copy always stays. |
 | **Similar photos** | Finds resized or re-saved copies using a perceptual hash, with thumbnails and a suggested best-quality keeper. |
-| **Videos** | Finds every video (MP4, MKV, MOV, AVI and more) on your user folder, one folder or the whole computer. Filter by type and size, sort, play, show in folder, and delete the ones you pick. |
-| **Downloads** | Flags old installers, ZIP archives and very large files for review. |
+| **Videos** | Finds every video (MP4, MKV, MOV, AVI and more) on your user folder, one folder or the whole computer. Filter by type and size, sort, play, show in folder, delete the ones you pick, or **move them to another drive** and leave a shortcut behind (hash-verified, and reversible from History). |
+| **Games** | Steam and Epic installs with size and when you last played (Steam records it), so you can spot big games you have dropped. Uninstalling is handed to the launcher. |
+| **Dev projects** | Old `node_modules`, `bin`/`obj`, Rust/Maven/Gradle build output, Python environments and Unity `Library` folders in projects you have not touched for months. Only folders a project clearly owns are listed. |
+| **Downloads** | Flags old installers, ZIP archives and very large files for review, and shows **which website each file came from** (read from the Windows "Mark of the Web"). |
 | **Temp files** | Lists leftovers in your temp folder, including empty folders programs leave behind, with an age filter. Files a program is using are skipped. |
 | **App caches** | Clears browser and app caches (Chrome, Edge, Brave, Firefox, Discord, npm, pip, NuGet and more). Logins, history and bookmarks are never touched. |
 | **OneDrive** | Sets big downloaded OneDrive files back to online-only ("Free up space"). Nothing is deleted. |
@@ -28,7 +30,7 @@ A command-line version (`dcleaner.exe`) is also on the release page.
 | **Installed apps** | Lists installed programs by size and opens Windows' Installed apps page. |
 | **Weekly report** | Schedules a weekly dry-run report through Task Scheduler. It only writes a report. |
 | **History** | Everything the app removed, with one-click restore from the Recycle Bin. |
-| **Settings** | Folder right-click menu entry, low-disk-space warning. Light and dark mode follow Windows. |
+| **Settings** | Folder right-click menu entry, low-disk-space warning, and the **safety net**: keep deleted files in a hidden holding area for N days instead of the Recycle Bin. Light and dark mode follow Windows. |
 
 ## Safety model
 
@@ -37,6 +39,8 @@ A command-line version (`dcleaner.exe`) is also on the release page.
 - Before any removal, each file is re-checked (size, time, and content hash for duplicates) in case it changed after the scan.
 - Windows, Program Files and standard user folders are protected. Automatic rules refuse personal folders (Documents, Pictures, Desktop) and cloud-sync folders.
 - Files that exist only in the cloud (OneDrive online-only) are never opened, so they are never downloaded by accident.
+- Optional **safety net**: deleted files wait in a hidden folder on their own drive for N days (instant move, one-click restore), then are deleted for good.
+- Moving files to another drive copies, verifies a SHA-256 match, creates the shortcut, and only then removes the original.
 - Every action is logged to `%LOCALAPPDATA%\DesktopCleaner\activity.jsonl`.
 - Nothing is uploaded. Photos and files are only read on your PC.
 
@@ -46,6 +50,11 @@ A command-line version (`dcleaner.exe`) is also on the release page.
 dcleaner dupes <folder> [--min-size <bytes>] [--delete-extras]
 dcleaner photos <folder> [--strict]
 dcleaner cleanup [--apply] [--report]
+dcleaner games
+dcleaner projects [folder] [--days 90] [--apply]
+dcleaner archive <file> [<file>...] --to <folder>
+dcleaner safetynet [--purge-all]
+dcleaner forecast
 dcleaner videos [folder] [--all-drives] [--min-mb N] [--type .mp4]
 dcleaner temp [--days 7] [--apply]
 dcleaner downloads [folder] [--days 30] [--large-mb 500] [--remove]
@@ -95,6 +104,13 @@ Notes on the engineering: scans run off the UI thread with cancellation and prog
 ## License
 
 [MIT](LICENSE)
+
+
+
+
+
+
+
 
 
 

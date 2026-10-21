@@ -40,6 +40,8 @@ public sealed class DownloadVm
         }
     }
     public string SizeText => Format.Bytes(Item.Size);
+    public string OriginText => Item.Origin?.Display ?? "";
+    public string OriginDetails => Item.Origin?.Details is { Length: > 0 } d ? d : "No website was recorded for this file.";
     public string Why => string.Join(", ", new[]
     {
         Item.Reasons.HasFlag(ReviewReason.OldInstaller) ? "Old setup file" : null,
@@ -99,13 +101,13 @@ public partial class MainWindow : Window
             {
                 Group = g,
                 // Pre-check every copy except the first; user reviews before anything is removed.
-                Files = g.Files.Select((f, i) => new FileVm { Path = f.Path, Modified = f.LastWriteUtc.ToLocalTime().ToString("g"), Remove = i > 0 }).ToList(),
+                Files = g.Files.Select((f, i) => new FileVm { Path = f.Path, Modified = f.LastWriteUtc.ToLocalTime().ToString("g"), Remove = false }).ToList(),
             }).ToList();
             Tree.ItemsSource = _groups;
             StatusText.Text = _groups.Count == 0 ? "No duplicates found. Nice and tidy." : $"Found {_groups.Count} sets of duplicates. You can free {Format.Bytes(r.WastedBytes)}."+(r.Issues.Count > 0 ? $" ({r.Issues.Count} files could not be read and were left alone.)" : "");
         }
         catch (OperationCanceledException) { StatusText.Text = "Stopped. Nothing was changed."; }
-        finally { SetBusy(false); Bar.IsIndeterminate = false; Bar.Value = 0; DeleteBtn.IsEnabled = _groups.Count > 0; }
+        finally { SetBusy(false); Bar.IsIndeterminate = false; Bar.Value = 0; ApplyKeepRule(); DeleteBtn.IsEnabled = LinkBtn.IsEnabled = _groups.Count > 0; }
     }
 
     private async void Delete_Click(object s, RoutedEventArgs e)
@@ -137,7 +139,7 @@ public partial class MainWindow : Window
         Tree.ItemsSource = null; Tree.ItemsSource = _groups;
         StatusText.Text = $"Freed {Format.Bytes(freed)}." + (skipped > 0 ? $" {skipped} left alone because they changed, were in use, or are protected." : "");
         SetBusy(false);
-        DeleteBtn.IsEnabled = _groups.Count > 0;
+        DeleteBtn.IsEnabled = LinkBtn.IsEnabled = _groups.Count > 0;
     }
 
     private List<DownloadVm> _downloads = [];
@@ -172,13 +174,76 @@ public partial class MainWindow : Window
         DlStatus.Text = $"Freed {Format.Bytes(res.Sum(r => r.Bytes))}." + (res.Any(r => r.Status != DeleteStatus.Recycled) ? $" {res.Count(r => r.Status != DeleteStatus.Recycled)} left alone because they changed or are protected." : "");
     }
 
+    private string? _keepFolder;
+
+    private void KeepRule_Changed(object s, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (KeepFolderText is null) return;
+        if (KeepRuleBox.SelectedIndex == 3)
+        {
+            var dlg = new OpenFolderDialog();
+            if (dlg.ShowDialog() == true) _keepFolder = dlg.FolderName;
+            else if (_keepFolder is null) { KeepRuleBox.SelectedIndex = 0; return; }
+        }
+        KeepFolderText.Text = KeepRuleBox.SelectedIndex == 3 ? _keepFolder ?? "" : "";
+        ApplyKeepRule();
+    }
+
+    /// <summary>Selects every copy except the one the chosen rule says to keep, in every group.</summary>
+    private void ApplyKeepRule()
+    {
+        if (_groups.Count == 0 || KeepRuleBox is null) return;
+        var rule = KeepRuleBox.SelectedIndex switch { 1 => KeepRule.Newest, 2 => KeepRule.ShortestPath, 3 => KeepRule.PreferFolder, _ => KeepRule.Oldest };
+        foreach (var g in _groups)
+        {
+            var keep = System.IO.Path.GetFullPath(KeepRules.Choose(g.Group, rule, _keepFolder).Path);
+            foreach (var f in g.Files) f.Remove = !string.Equals(System.IO.Path.GetFullPath(f.Path), keep, StringComparison.OrdinalIgnoreCase);
+        }
+        Tree.ItemsSource = null; Tree.ItemsSource = _groups;
+    }
+
+    private async void Link_Click(object s, RoutedEventArgs e)
+    {
+        var picks = _groups.Select(g => (g, keeper: g.Files.FirstOrDefault(f => !f.Remove)?.Path, paths: g.Files.Where(f => f.Remove).Select(f => f.Path).ToList()))
+            .Where(x => x.paths.Count > 0 && x.keeper is not null).ToList();
+        int n = picks.Sum(x => x.paths.Count);
+        if (n == 0) { StatusText.Text = "Select at least one copy first (and keep one in each group)."; return; }
+        long bytes = picks.Sum(x => x.g.Group.FileSize * x.paths.Count);
+        if (!ConfirmDialog.Ask(this, n == 1 ? "Replace this copy with a link?" : $"Replace {n} copies with links?", n, bytes, picks.SelectMany(x => x.paths).ToList(), ConfirmKind.Link, "Replace with links")) return;
+
+        SetBusy(true);
+        var linker = new DuplicateLinker(new ActivityLog());
+        var bar = new DeleteBar(Bar, StatusText, "Linking", n);
+        long freed = 0; int skipped = 0; var done = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (g, keeper, paths) in picks)
+        {
+            var progress = bar.Batch();
+            foreach (var o in await Task.Run(() => linker.LinkAsync(g.Group, keeper!, paths, default, progress)))
+                if (o.Status == DeleteStatus.Linked) { freed += o.Bytes; done.Add(o.Path); } else skipped++;
+            bar.BatchDone(paths.Count);
+        }
+        bar.Close();
+        foreach (var g in _groups) g.Files.RemoveAll(f => done.Contains(f.Path));
+        _groups = _groups.Where(g => g.Files.Count > 1).ToList();
+        Tree.ItemsSource = null; Tree.ItemsSource = _groups;
+        StatusText.Text = $"Freed {Format.Bytes(freed)} by linking." + (skipped > 0 ? $" {skipped} left alone (different drive, not NTFS, already linked, or changed)." : "");
+        SetBusy(false);
+        DeleteBtn.IsEnabled = LinkBtn.IsEnabled = _groups.Count > 0;
+    }
+
     private void SetBusy(bool busy)
     {
         ScanBtn.IsEnabled = BrowseBtn.IsEnabled = !busy;
         CancelBtn.IsEnabled = busy && _cts is not null;
-        DeleteBtn.IsEnabled = false;
+        DeleteBtn.IsEnabled = LinkBtn.IsEnabled = false;
     }
 }
+
+
+
+
+
+
 
 
 

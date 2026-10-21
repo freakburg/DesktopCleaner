@@ -16,7 +16,7 @@ public sealed record EmptyFolderOutcome(string Path, EmptyFolderStatus Status, s
 /// </summary>
 public sealed class EmptyFolderFinder(ActivityLog? log = null, Action<string>? recycle = null)
 {
-    private readonly Action<string> _recycle = recycle ?? RecycleBin.Send;
+    private readonly Action<string> _recycle = recycle ?? FileDisposal.Send;
 
     private sealed record Node(DirectoryInfo Dir, bool IsEmpty, int EmptyCount, List<Node> Children);
 
@@ -121,6 +121,7 @@ public sealed class EmptyFolderFinder(ActivityLog? log = null, Action<string>? r
             string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(s)), full, StringComparison.OrdinalIgnoreCase));
     }
 }
+
 
 
 

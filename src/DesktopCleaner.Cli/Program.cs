@@ -13,6 +13,7 @@ using DesktopCleaner.Core.Scheduling;
 using DesktopCleaner.Core.Storage;
 using System.Diagnostics;
 
+DesktopCleaner.Core.Deletion.FileDisposal.Configure(DesktopCleaner.Core.Settings.AppSettings.Load());
 if (args.Length == 0 || args[0] is "-h" or "--help")
 {
     Console.WriteLine("""
@@ -27,6 +28,12 @@ if (args.Length == 0 || args[0] is "-h" or "--help")
           dcleaner photos <folder> [--strict]       find similar photos (resized/re-saved copies)
           dcleaner onedrive [--min-mb 5]            big OneDrive files that are also stored on this PC (can be set to online-only)
           dcleaner apps                             installed programs, biggest first
+          dcleaner safetynet [--purge-all]          list files held in the safety net (set it on in the app's Settings)
+          dcleaner safetynet [--purge-all]          list files held in the safety net (turn it on in the app's Settings)
+          dcleaner forecast                         will the system drive fill up, and when (needs a few days of history)
+          dcleaner games                            Steam and Epic games with size and when you last played
+          dcleaner projects [folder] [--days 90] [--apply]   old node_modules, bin/obj, target, venv and Unity Library folders you can rebuild
+          dcleaner archive <file> [<file>...] --to <folder>   move big files to another drive, leaving a shortcut (undo with: dcleaner restore "<original path>")
           dcleaner history                          list what was removed; items sent to the Recycle Bin can be restored
           dcleaner restore <full path>              put a removed file back from the Recycle Bin
           dcleaner empty <folder> [--remove]        list empty folders; --remove asks before sending them to the Recycle Bin
@@ -48,6 +55,56 @@ if (args[0] == "temp") return await RunTemp(args);
 if (args[0] == "videos") return await RunVideos(args);
 if (args[0] == "photos") return await RunPhotos(args);
 if (args[0] == "history") return RunHistory();
+if (args[0] == "archive")
+{
+    var toIndex = Array.IndexOf(args, "--to");
+    if (toIndex < 0 || toIndex + 1 >= args.Length) { Console.Error.WriteLine("Give the destination: --to <folder on another drive>"); return 1; }
+    var files = args.Skip(1).Take(toIndex - 1).Select(f => { var fi = new FileInfo(f); return (fi.FullName, fi.Exists ? fi.Length : 0L, fi.Exists ? fi.LastWriteTimeUtc : default); }).ToList();
+    var arcProgress = new Progress<DesktopCleaner.Core.Archiving.ArchiveProgress>(p => Console.Error.Write($"\rFile {p.FileNumber}/{p.FileCount}  {ReportWriter.Bytes(p.BytesDone)} of {ReportWriter.Bytes(p.BytesTotal)}   "));
+    var res = await new DesktopCleaner.Core.Archiving.Archiver(null, new ActivityLog()).ArchiveAsync(files, args[toIndex + 1], arcProgress);
+    Console.Error.WriteLine();
+    foreach (var r in res) Console.WriteLine($"{r.Status,-16} {r.Path}{(r.Detail is null ? "" : "  - " + r.Detail)}");
+    return res.All(r => r.Succeeded) ? 0 : 1;
+}
+if (args[0] == "projects")
+{
+    int days = 90; string? folder = null;
+    for (int i = 1; i < args.Length; i++) { if (args[i] == "--days" && i + 1 < args.Length) days = int.Parse(args[++i]); else if (!args[i].StartsWith("--")) folder = args[i]; }
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    var found = await new DesktopCleaner.Core.Projects.ProjectClutterFinder().ScanAsync([folder ?? DesktopCleaner.Core.Videos.VideoLocations.UserFolder], days);
+    foreach (var i in found.Take(20)) Console.WriteLine($"{ReportWriter.Bytes(i.Bytes),10}  {i.KindText,-20} {i.ProjectName,-28} last used {(DateTime.UtcNow - i.ProjectLastActivityUtc).TotalDays:F0} days ago  ({i.FolderPath})");
+    Console.WriteLine($"\n{found.Count} folders, {ReportWriter.Bytes(found.Sum(i => i.Bytes))} (looked in {sw.Elapsed.TotalSeconds:F1}s). Projects used in the last {days} days are left alone.");
+    if (args.Contains("--apply") && found.Count > 0)
+    {
+        var res = new DesktopCleaner.Core.Projects.ProjectClutterRemover(new ActivityLog()).Remove(found, days);
+        Console.WriteLine($"Deleted {res.Count(r => r.Succeeded)} folders, freed {ReportWriter.Bytes(res.Sum(r => r.Bytes))}.");
+    }
+    return 0;
+}
+if (args[0] == "games")
+{
+    var now = DateTime.UtcNow;
+    foreach (var g in new DesktopCleaner.Core.Games.GameFinder().Find().Where(g => !g.IsTool).OrderByDescending(g => g.SizeBytes))
+        Console.WriteLine($"{ReportWriter.Bytes(g.SizeBytes),10}  {g.Launcher,-5}  {(g.DaysSincePlayed(now) is { } d ? $"{d} days ago" : g.Launcher == DesktopCleaner.Core.Games.GameLauncher.Steam ? "never played" : "not recorded"),-16} {g.Name}");
+    return 0;
+}
+if (args[0] == "forecast")
+{
+    var disk = DesktopCleaner.Core.Settings.DiskSpaceCheck.SystemDrive();
+    if (disk is null) { Console.Error.WriteLine("Could not read the system drive."); return 1; }
+    var hist = new DesktopCleaner.Core.History.DriveHistory(); hist.Record(disk);
+    Console.WriteLine($"{disk.Drive}: {ReportWriter.Bytes(disk.FreeBytes)} free of {ReportWriter.Bytes(disk.TotalBytes)} ({disk.FreePercent:F0}%)");
+    Console.WriteLine(DesktopCleaner.Core.History.DiskForecast.Estimate(hist.Points(disk.Drive), DateTime.UtcNow).Message(disk.Drive));
+    return 0;
+}
+if (args[0] == "safetynet")
+{
+    var net = DesktopCleaner.Core.Deletion.FileDisposal.Net;
+    if (args.Contains("--purge-all")) { var r = net.Purge(true); Console.WriteLine($"Deleted {r.Removed} held items, freed {ReportWriter.Bytes(r.FreedBytes)}."); return 0; }
+    foreach (var h in net.List()) Console.WriteLine($"{h.DaysLeft(DateTime.UtcNow),3} days left  {ReportWriter.Bytes(h.Bytes),9}  {h.OriginalPath}");
+    Console.WriteLine($"\n{net.List().Count} items held.");
+    return 0;
+}
 if (args[0] == "onedrive") return await RunOneDrive(args);
 if (args[0] == "apps") return RunApps();
 if (args[0] == "restore") return await RunRestore(args);
@@ -238,7 +295,7 @@ static int RunHistory()
 static async Task<int> RunRestore(string[] args)
 {
     if (args.Length < 2) { Console.Error.WriteLine("Give the full original path."); return 1; }
-    var res = await RecycleBinRestorer.RestoreAsync(args[1]);
+    var res = await FileDisposal.RestoreAsync(args[1]);
     Console.WriteLine($"{res.Status}{(res.Detail is null ? "" : ": " + res.Detail)}");
     return res.Status == RestoreStatus.Restored ? 0 : 1;
 }
@@ -306,6 +363,14 @@ static async Task<int> RunVideos(string[] args)
     if (scan.CloudOnlySkipped > 0) Console.WriteLine($"{scan.CloudOnlySkipped} online-only OneDrive videos were left out (they use no space on this PC).");
     return 0;
 }
+
+
+
+
+
+
+
+
 
 
 

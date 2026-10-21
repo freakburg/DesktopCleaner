@@ -6,7 +6,7 @@ namespace DesktopCleaner.Core.Downloads;
 [Flags]
 public enum ReviewReason { None = 0, OldInstaller = 1, OldArchive = 2, Large = 4 }
 
-public sealed record DownloadItem(string Path, long Size, DateTime LastWriteUtc, ReviewReason Reasons)
+public sealed record DownloadItem(string Path, long Size, DateTime LastWriteUtc, ReviewReason Reasons, DownloadOrigin? Origin = null)
 {
     public int AgeDays(DateTime nowUtc) => (int)(nowUtc - LastWriteUtc).TotalDays;
 }
@@ -28,7 +28,7 @@ public sealed record DownloadsOptions
 /// </summary>
 public sealed class DownloadsReviewer(ActivityLog? log = null, Action<string>? recycle = null, Func<DateTime>? clock = null)
 {
-    private readonly Action<string> _recycle = recycle ?? RecycleBin.Send;
+    private readonly Action<string> _recycle = recycle ?? FileDisposal.Send;
     private readonly Func<DateTime> _now = clock ?? (() => DateTime.UtcNow);
 
     public Task<IReadOnlyList<DownloadItem>> ScanAsync(string? folder = null, DownloadsOptions? options = null, CancellationToken ct = default) =>
@@ -52,7 +52,7 @@ public sealed class DownloadsReviewer(ActivityLog? log = null, Action<string>? r
                 if (old && installers.Contains(fi.Extension)) reasons |= ReviewReason.OldInstaller;
                 if (old && archives.Contains(fi.Extension)) reasons |= ReviewReason.OldArchive;
                 if (fi.Length >= o.LargeThresholdBytes) reasons |= ReviewReason.Large;
-                if (reasons != ReviewReason.None) items.Add(new DownloadItem(fi.FullName, fi.Length, fi.LastWriteTimeUtc, reasons));
+                if (reasons != ReviewReason.None) items.Add(new DownloadItem(fi.FullName, fi.Length, fi.LastWriteTimeUtc, reasons, DownloadOrigin.Read(fi.FullName)));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* unreadable: leave it alone */ }
         }
@@ -91,6 +91,9 @@ public sealed class DownloadsReviewer(ActivityLog? log = null, Action<string>? r
     private static HashSet<string> Set(IEnumerable<string> exts) =>
         exts.Select(e => e.StartsWith('.') ? e : "." + e).ToHashSet(StringComparer.OrdinalIgnoreCase);
 }
+
+
+
 
 
 
