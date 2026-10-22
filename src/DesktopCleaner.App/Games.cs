@@ -45,6 +45,24 @@ public partial class MainWindow
         finally { GmScanBtn.IsEnabled = true; }
     }
 
+    /// <summary>Where the Epic launcher is installed, taken from the way Windows registers its web link.</summary>
+    private static string? EpicLauncherExe()
+    {
+        try
+        {
+            using var k = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(@"com.epicgames.launcher\shell\open\command");
+            var cmd = k?.GetValue("") as string;
+            if (cmd is { Length: > 0 })
+            {
+                var path = cmd.Trim().StartsWith('"') ? cmd.Trim()[1..cmd.Trim().IndexOf('"', 1)] : cmd.Trim().Split(' ')[0];
+                if (File.Exists(path)) return path;
+            }
+        }
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException) { }
+        var fallback = @"C:\Program Files (x86)\Epic Games\Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe";
+        return File.Exists(fallback) ? fallback : null;
+    }
+
     private void GmFilter_Changed(object s, RoutedEventArgs e) { if (_gmReady) ApplyGameFilter(); }
 
     private void ApplyGameFilter()
@@ -77,7 +95,7 @@ public partial class MainWindow
         else GmStatus.Text = "That folder is no longer there.";
     }
 
-    private void GmUninstall_Click(object s, RoutedEventArgs e)
+    private async void GmUninstall_Click(object s, RoutedEventArgs e)
     {
         if (GmList.SelectedItem is not GameVm g) return;
         try
@@ -90,8 +108,18 @@ public partial class MainWindow
             }
             else
             {
+                // Epic has no "uninstall this game" link, so open the launcher on its library page and bring its window forward
+                // (a launcher that is already running minimized or in the tray would otherwise stay hidden).
                 Process.Start(new ProcessStartInfo("com.epicgames.launcher://apps") { UseShellExecute = true });
-                GmStatus.Text = $"The Epic Games Launcher is opening. Find {g.Name} in your Library, click the three dots and choose Uninstall.";
+                bool shown = await WindowTools.BringToFrontAsync("EpicGamesLauncher");
+                if (!shown && EpicLauncherExe() is { } exe)
+                {
+                    Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });   // starting it again makes a hidden instance show its window
+                    shown = await WindowTools.BringToFrontAsync("EpicGamesLauncher", 8000);
+                }
+                GmStatus.Text = shown
+                    ? $"The Epic Games Launcher is open. Find {g.Name} in your Library, click the three dots and choose Uninstall."
+                    : "Could not bring the Epic Games Launcher to the front. Open it from the Start menu, then find " + g.Name + " in your Library and choose Uninstall.";
             }
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
@@ -100,4 +128,7 @@ public partial class MainWindow
         }
     }
 }
+
+
+
 
